@@ -190,9 +190,9 @@ if __name__ == "__main__":
         uq_history.record_sample(sample_string, perturbed_param_dict)
 
         # send sample parameters to corresponding locations in moose input file
-        # setup_new_moose_input(config["uncertain-params"], perturbed_param_dict, baselinedir_abs_path, new_dir, config['moose-input'])
-        # launcher.append_to_scheduler(new_dir)
-    # launcher.write_launcher("launcher.sh")
+        setup_new_moose_input(config["uncertain-params"], perturbed_param_dict, baselinedir_abs_path, new_dir, config['moose-input'])
+        launcher.append_to_scheduler(new_dir)
+    launcher.write_launcher("launcher.sh")
     uq_history.write_logger("uq_log.json")
     
 
