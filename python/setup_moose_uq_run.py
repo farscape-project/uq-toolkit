@@ -1,3 +1,4 @@
+import argparse
 from copy import copy
 import os
 from shutil import copytree
@@ -16,6 +17,21 @@ Steps:
 5. 
 
 """
+
+def get_inputs():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--config", "-c",
+        default="config.jsonc", 
+        type=str,
+        help="which json file to read?",
+    )
+    parser.add_argument("--copy-off",
+        default=False,
+        action="store_true",
+        help="Do not copy dir",
+    )
+    return parser.parse_args()
+
 
 def perturbed_poly(x, coeffs):
     deg_list = np.arange(0, coeffs.size, 1)[::-1]
@@ -43,7 +59,8 @@ def parse_moose_to_param_dict(config):
                 x = np.array(param_moose["x"].split(), dtype=float)
                 y = np.array(param_moose["y"].split(), dtype=float)
             elif config["uncertain-params"][key_i][param_i]["type"] == "value":
-                param_dict[moose_path] = copy(float(param_moose["value"]))
+                value_name = config["uncertain-params"][key_i][param_i]["value_name"]
+                param_dict[moose_path] = copy(float(param_moose[value_name]))
             else:
                 raise NotImplementedError
             
@@ -91,7 +108,8 @@ def setup_new_moose_input(config, perturbed_param_dict, basedir_abs, sample_dir_
                     print(config[key_i][param_i].keys())
                     raise NotImplementedError
             elif config[key_i][param_i]["type"] == "value":
-                param_moose["value"] = perturbed_param_dict[moose_path]
+                value_name = config[key_i][param_i]["value_name"]
+                param_moose[value_name] = perturbed_param_dict[moose_path]
             else:
                 raise NotImplementedError
             
@@ -104,8 +122,11 @@ def setup_new_moose_input(config, perturbed_param_dict, basedir_abs, sample_dir_
 class UQLauncher:
     def __init__(self, launcher_type, launcher_script):
         self.launcher_type = launcher_type
+        if self.launcher_type == "None":
+            self.launcher_type = None
         self.launch_string = self._get_launcher_string()
-        assert os.path.exists(f"basedir/{launcher_script}"), "template launcher script does not exist"
+        if self.launcher_type is not None:
+            assert os.path.exists(f"basedir/{launcher_script}"), "template launcher script does not exist"
         self.launcher_script = launcher_script
         self.scheduler_text = self._setup_scheduler()
 
@@ -116,6 +137,8 @@ class UQLauncher:
             return "sbatch "
         elif self.launcher_type == "lsf":
             return "bsub < "
+        elif self.launcher_type == None:
+            return
         else:
             raise NotImplementedError
 
@@ -126,14 +149,17 @@ class UQLauncher:
             # note that when using mpi, each simulation is run in parallel, but the batch itself is run in serial
             scheduler_text.append("#!/bin/bash\n\n")
             pass
+        elif self.launcher_type == None:
+            return
         else:
             raise NotImplementedError
         return scheduler_text
 
     def append_to_scheduler(self, newdir):
-        self.scheduler_text.append(f"cd {newdir}\n")
-        self.scheduler_text.append(f"{self.launch_string} {self.launcher_script} \n")
-        self.scheduler_text.append(f"cd -\n")
+        if self.launcher_type == "bash":
+            self.scheduler_text.append(f"cd {newdir}\n")
+            self.scheduler_text.append(f"{self.launch_string} {self.launcher_script} \n")
+            self.scheduler_text.append(f"cd -\n")
 
     def write_launcher(self, launcher_name):
         if self.launcher_type == "bash":
@@ -144,9 +170,9 @@ class UQLauncher:
             [f.write(line_i) for line_i in self.scheduler_text]
 
 class UncertaintyLogger:
-    def __init__(self, initial_dict, initial_name):
+    def __init__(self):
         self.out_dict = {}
-        self.record_sample(initial_name, initial_dict)
+        # self.record_sample(initial_name, initial_dict)
         pass
 
     def record_sample(self, sample_name, sample_dict):
@@ -163,10 +189,14 @@ class UncertaintyLogger:
         
 
 if __name__ == "__main__":
-    tracker_dict = {}
-    with open("config.jsonc", "r") as f:
+    args = get_inputs()
+    with open(args.config, "r") as f:
         config = json.load(f)
+    # setup helper classes
+    uq_history = UncertaintyLogger()#moose_params, config["baseline_dir"])
+    launcher = UQLauncher(config["launcher"], config["template_launcher_script"])
 
+    # TODO: Need to do loop here over N apps?
     baselinedir_abs_path = os.path.join(config["workdir"],config["baseline_dir"])
     # parser for reading MOOSE input files
     root = pyhit.load(f"{baselinedir_abs_path}/{config['moose-input']}")
@@ -174,16 +204,17 @@ if __name__ == "__main__":
     # find uncertain parameters in MOOSE input file corresponding to json
     moose_params = parse_moose_to_param_dict(config)
     print(moose_params)
-    uq_history = UncertaintyLogger(moose_params, config["baseline_dir"])
 
     # setup class to make script for running simulations
-    launcher = UQLauncher(config["launcher"], config["template_launcher_script"])
     
     for sample_i in range(config["num_samples"]):
         sample_string = f"sample{sample_i}"
 
         new_dir = os.path.join(config["workdir"], sample_string)
-        copytree(baselinedir_abs_path, new_dir)
+        if args.copy_off:
+            pass
+        else:
+            copytree(baselinedir_abs_path, new_dir)
 
         # sample parameters
         perturbed_param_dict = perturb_params(moose_params)
@@ -192,7 +223,7 @@ if __name__ == "__main__":
         # send sample parameters to corresponding locations in moose input file
         setup_new_moose_input(config["uncertain-params"], perturbed_param_dict, baselinedir_abs_path, new_dir, config['moose-input'])
         launcher.append_to_scheduler(new_dir)
-    launcher.write_launcher("launcher.sh")
-    uq_history.write_logger("uq_log.json")
+    launcher.write_launcher(f"launcher.sh")
+    uq_history.write_logger(f"{config['uq_log_name']}.json")
     
 

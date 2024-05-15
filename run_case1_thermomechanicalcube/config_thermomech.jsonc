@@ -46,11 +46,12 @@
             "heat-load":
             {
                 "type" : "value", // implies this is a scalar
+                "value_name":"value",
                 "distribution": ["normal", 0, 0.01]
             }
         }
     },
-    "workdir":"/work4/cse/scarf1324/py_cube_uq/gitsynced_repo/run_case1_thermomechanicalcube/",
+    "workdir":"/work4/cse/scarf1324/py_cube_uq/gitsynced_repo/run_case2_thermomechanicalcube_with_coolant/",
     "baseline_dir":"basedir",
     "moose-input": "cube_thermal_mechanical.i",
     "executable":"/home/vol04/scarf1324/moose-volumejunctionfix/modules/combined/combined-opt",
@@ -59,6 +60,10 @@
     "num_samples" : 10,
     // "nproc_per_sample" : 32,
     "launcher" : "bash",
-    "template_launcher_script":"runpar.sh"
+    "template_launcher_script":"runpar.sh",
+    
+    // parameters for run
+    "launcher_name" : "launcher.sh",
+    "uq_log_name": "uq_log_thermomech",
     // "num_parallel_samples" : 1, 
 }
