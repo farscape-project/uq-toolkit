@@ -60,7 +60,7 @@
     "num_samples" : 10,
     // "nproc_per_sample" : 32,
     "launcher" : "bash",
-    "template_launcher_script":"runpar.sh",
+    "template_launcher_script":"run.sh",
     
     // parameters for run
     "launcher_name" : "launcher.sh",

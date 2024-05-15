@@ -54,6 +54,20 @@
     order = FIRST
     family = MONOMIAL
   []
+  [temp_received]
+    # order = CONSTANT
+    order = FIRST
+    family = LAGRANGE
+    initial_condition = 293.15
+  []
+  [aux_flux]
+    order = CONSTANT
+    family = MONOMIAL
+  []
+  [aux_flux_boundary]
+    order = FIRST
+    family = LAGRANGE
+  []
 []
 
 [Kernels]
@@ -83,6 +97,19 @@
 []
 
 [AuxKernels]
+ [aux_flux_kernel_proj]
+    type = ProjectionAux
+    variable = aux_flux_boundary
+    v = aux_flux
+  []
+  [aux_flux_kernel]
+    type = DiffusionFluxAux
+    diffusion_variable = temp
+    component = normal
+    diffusivity = thermal_conductivity
+    variable = aux_flux
+    boundary = "innerpipe"
+  []
   [K_to_C]
     type = ParsedAux
     variable = 'temp_in_C'
@@ -198,6 +225,12 @@
     boundary = 'left right'
     value = 0.0
   []
+  [temp_innerpipe_from_THM]
+    type = FunctorDirichletBC
+    variable = temp
+    boundary = 'innerpipe'
+    functor = temp_received
+  []
 []
 			       
 [Materials]
@@ -302,6 +335,40 @@
 
 []
   
+
+
+[MultiApps]
+  [flow_channel]
+    type = TransientMultiApp
+    app_type = ThermalHydraulicsApp
+    input_files = coolant.i 
+    execute_on = 'timestep_end'
+    max_procs_per_app = 1
+    sub_cycling = true
+  []
+[]
+
+[Transfers]
+  [T_from_child_to_parent]
+    type = MultiAppGeneralFieldNearestLocationTransfer
+    from_multi_app = flow_channel
+    distance_weighted_average = true
+    source_variable = 'T' 
+    to_boundaries = "innerpipe"
+    variable = temp_received # *to variable*
+    num_nearest_points = 30
+  []
+  [heatflux_from_parent_to_child]
+    type = MultiAppGeneralFieldNearestLocationTransfer
+    to_multi_app = flow_channel
+    distance_weighted_average = true
+    source_variable = aux_flux_boundary # *from variable*
+    from_boundaries = "innerpipe"
+    variable = q_wall # *to variable*
+    num_nearest_points = 200
+  []
+[]
+
 [Outputs]
   exodus = false
   csv = true

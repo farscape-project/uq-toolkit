@@ -4,7 +4,6 @@
 # temp0 = 290.0
 # tempWall0 = 290.0
 core_dia = 0.1
-circumference = 0.3141
 # area = ${3.141 * core_dia * core_dia / 4.}
 
 # params from Barrett 2022. Coolant is water
@@ -12,8 +11,6 @@ density = 1000 # kg / m^3
 inlet_temp = 400 #606 # 333 C
 p_out = 15.5e5 # MPa # not clear what outlet pressure is, think this value is inlet
 vol_flowrate = 0.001 # 650 L / min
-
-n_elems_radial = 10
 
 n_elems_axial=100
 
