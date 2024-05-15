@@ -1,0 +1,38 @@
+{
+    "uncertain-params":
+    {
+        /*
+        can nest this dict as {"moose":"uncertain-params"} or {moose_input_file_path:"uncertain-params", python_file_path:"uncertain-params"}
+        */
+        /*
+            Currently I envision 3 standard types; "csv", "xy" and "value".
+            "value" will be generalisable across different inputs (mesher, moose etc)
+            "csv" is same,
+            "xy" and other moose-specific ones can be added
+        */
+        "Components":
+        {
+            "pipe1" :
+            {
+                "type" : "value", // implies this is a scalar
+                "value_name":"f",
+                "distribution": ["normal", 0, 0.01] // don't think this does anything right now
+            }
+        }
+    },
+    "workdir":"/work4/cse/scarf1324/py_cube_uq/gitsynced_repo/run_case2_thermomechanicalcube_with_coolant/",
+    "baseline_dir":"basedir",
+    "moose-input": "coolant.i",
+    "executable":"/home/vol04/scarf1324/moose-volumejunctionfix/modules/combined/combined-opt",
+
+    "sampler" : "monte_carlo",
+    "num_samples" : 10,
+    // "nproc_per_sample" : 32,
+    "launcher" : "None",
+    "template_launcher_script":"-",
+    
+    // parameters for run
+    // "launcher_name" : "launcher.sh",
+    "uq_log_name": "uq_log_coolant",
+    // "num_parallel_samples" : 1, 
+}
