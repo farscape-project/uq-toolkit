@@ -183,7 +183,7 @@ if __name__ == "__main__":
         sample_string = f"sample{sample_i}"
 
         new_dir = os.path.join(config["workdir"], sample_string)
-        # copytree(baselinedir_abs_path, new_dir)
+        copytree(baselinedir_abs_path, new_dir)
 
         # sample parameters
         perturbed_param_dict = perturb_params(moose_params)

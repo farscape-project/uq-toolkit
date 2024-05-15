@@ -50,14 +50,14 @@
             }
         }
     },
-    "workdir":"/work4/cse/scarf1324/py_cube_uq/run_case1_thermomechanicalcube/",
+    "workdir":"/work4/cse/scarf1324/py_cube_uq/gitsynced_repo/run_case1_thermomechanicalcube/",
     "baseline_dir":"basedir",
     "moose-input": "cube_thermal_mechanical.i",
     "executable":"/home/vol04/scarf1324/moose-volumejunctionfix/modules/combined/combined-opt",
 
     "sampler" : "monte_carlo",
     "num_samples" : 10,
-    "nproc_per_sample" : 32,
+    // "nproc_per_sample" : 32,
     "launcher" : "bash",
     "template_launcher_script":"runpar.sh"
     // "num_parallel_samples" : 1, 
