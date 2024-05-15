@@ -1,0 +1,13 @@
+# moose result files, cache/tmp files and big input files
+*_out.csv
+*_out_*.csv
+*_out*.e
+.jitcache
+*.msh
+
+# uq files
+sample*
+launcher.sh
+
+# system files
+*.swp

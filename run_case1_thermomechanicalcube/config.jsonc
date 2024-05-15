@@ -1,0 +1,64 @@
+{
+    "uncertain-params":
+    {
+        /*
+        can nest this dict as {"moose":"uncertain-params"} or {moose_input_file_path:"uncertain-params", python_file_path:"uncertain-params"}
+        */
+        /*
+            Currently I envision 3 standard types; "csv", "xy" and "value".
+            "value" will be generalisable across different inputs (mesher, moose etc)
+            "csv" is same,
+            "xy" and other moose-specific ones can be added
+        */
+        "Functions":
+        {
+            "copper_tc" :
+            {
+                "type": "csv",
+                "distribution": ["normal", 0, 0.01],
+                "fit_poly": {"deg":1},
+            },
+            "copper_sh" :
+            {
+                "type": "csv",
+                "distribution": ["normal", 0, 0.01],
+                "fit_poly": {"deg":1},
+                "deg": 1
+            },
+            "copper_thermal_expansion" :
+            {
+                "type": "csv",
+                "distribution": ["normal", 0, 0.01],
+                "fit_poly": {"deg":3},
+            },
+        },
+        "Materials":
+        {
+            "copper_density":
+            {
+                "type": "xy", // will parse "x" and "y" parameter from moose input
+                "fit_poly": {"deg":1},
+                "distribution": ["normal", 0, 0.01]
+            }
+        },
+        "BCs":
+        {
+            "heat-load":
+            {
+                "type" : "value", // implies this is a scalar
+                "distribution": ["normal", 0, 0.01]
+            }
+        }
+    },
+    "workdir":"/work4/cse/scarf1324/py_cube_uq/run_case1_thermomechanicalcube/",
+    "baseline_dir":"basedir",
+    "moose-input": "cube_thermal_mechanical.i",
+    "executable":"/home/vol04/scarf1324/moose-volumejunctionfix/modules/combined/combined-opt",
+
+    "sampler" : "monte_carlo",
+    "num_samples" : 10,
+    "nproc_per_sample" : 32,
+    "launcher" : "bash",
+    "template_launcher_script":"runpar.sh"
+    // "num_parallel_samples" : 1, 
+}
