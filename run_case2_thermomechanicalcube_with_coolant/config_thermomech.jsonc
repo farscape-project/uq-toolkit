@@ -59,8 +59,8 @@
     "sampler" : "monte_carlo",
     "num_samples" : 10,
     // "nproc_per_sample" : 32,
-    "launcher" : "bash",
-    "template_launcher_script":"run.sh",
+    "launcher" : "slurm",
+    "template_launcher_script":"runCase.sh",
     
     // parameters for run
     "launcher_name" : "launcher.sh",
