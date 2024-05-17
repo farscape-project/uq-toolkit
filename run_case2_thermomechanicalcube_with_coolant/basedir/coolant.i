@@ -99,6 +99,20 @@ n_elems_axial=100
   []
 []
 
+[Postprocessors]
+  [max_temp]
+    type = ElementExtremeValue
+    variable = T
+  []
+  [pressuredrop]
+    type=PressureDrop
+    upstream_boundary="inlet"
+    downstream_boundary="outlet"
+    boundary="inlet outlet"
+    pressure="p"
+  []
+[]
+
 [Executioner]
   type = Transient
   scheme = 'bdf2'
