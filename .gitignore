@@ -13,3 +13,4 @@ uq_log*.json
 # system files
 *.swp
 run_case1_thermomechanicalcube/uq_log.json
+__pycache__
