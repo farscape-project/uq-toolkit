@@ -1,5 +1,6 @@
-from abc import ABC, abstractmethod, abstractproperty
+from abc import ABC, abstractmethod
 import numpy as np
+from warnings import warn
 
 class SampleDistributionBase(ABC):
 
@@ -30,6 +31,8 @@ class SampleDistributions(SampleDistributionBase):
 class SampleRelativeDistributions(SampleDistributionBase):
     def __init__(self, distribution_string, val_0, val_1):
         self.distribution = getattr(np.random, distribution_string)
+        if distribution_string == "normal" and val_0 == 0:
+            warn("This will multiply baseline value by normal distribution with 0 mean. Do you mean mean = 1?")
         self.val_0 = val_0
         self.val_1 = val_1
         pass

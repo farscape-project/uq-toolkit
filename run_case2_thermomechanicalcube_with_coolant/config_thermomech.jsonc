@@ -15,20 +15,20 @@
             "copper_tc" :
             {
                 "type": "csv",
-                "distribution": {"name":"normal", "args":[0, 0.01], "fraction":true},
+                "distribution": {"name":"normal", "args":[1, 0.01], "fraction":true},
                 "fit_poly": {"deg":1},
             },
             "copper_sh" :
             {
                 "type": "csv",
-                "distribution": {"name":"normal", "args":[0, 0.01], "fraction":true},
+                "distribution": {"name":"normal", "args":[1, 0.01], "fraction":true},
                 "fit_poly": {"deg":1},
                 "deg": 1
             },
             "copper_thermal_expansion" :
             {
                 "type": "csv",
-                "distribution": {"name":"normal", "args":[0, 0.01], "fraction":true},
+                "distribution": {"name":"normal", "args":[1, 0.01], "fraction":true},
                 "fit_poly": {"deg":3},
             },
         },
@@ -38,7 +38,7 @@
             {
                 "type": "xy", // will parse "x" and "y" parameter from moose input
                 "fit_poly": {"deg":1},
-                "distribution": {"name":"normal", "args":[0, 0.01], "fraction":true},
+                "distribution": {"name":"normal", "args":[1, 0.01], "fraction":true},
             }
         },
         "BCs":
