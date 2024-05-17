@@ -4,31 +4,31 @@ import moosetree
 import pyhit
 import numpy as np
 
-def parse_moose_to_param_dict(config, moose_input):
+def parse_moose_to_param_dict(uq_config, path_config, moose_input):
     param_dict = {}
     distrib_dict = {}
-    for key_i in config["uncertain-params"]:
-        for param_i in config["uncertain-params"][key_i]:
+    for key_i in uq_config:
+        for param_i in uq_config[key_i]:
             moose_path = f'/{key_i}/{param_i}'
             param_moose = moosetree.find(moose_input, func=lambda n: n.fullpath == moose_path)
             # print(param_i, list(param_moose.params()))
             
-            distrib_dict[moose_path] = copy(config["uncertain-params"][key_i][param_i]["distribution"])
-            if config["uncertain-params"][key_i][param_i]["type"] == "csv":
-                data = np.loadtxt(path.join(config['workdir'], config['baseline_dir'],param_moose["data_file"]), delimiter=",")
+            distrib_dict[moose_path] = copy(uq_config[key_i][param_i]["distribution"])
+            if uq_config[key_i][param_i]["type"] == "csv":
+                data = np.loadtxt(path.join(path_config['workdir'], path_config['baseline_dir'],param_moose["data_file"]), delimiter=",")
                 x = data[0]
                 y = data[1]
-            elif config["uncertain-params"][key_i][param_i]["type"] == "xy":
+            elif uq_config[key_i][param_i]["type"] == "xy":
                 x = np.array(param_moose["x"].split(), dtype=float)
                 y = np.array(param_moose["y"].split(), dtype=float)
-            elif config["uncertain-params"][key_i][param_i]["type"] == "value":
-                value_name = config["uncertain-params"][key_i][param_i]["value_name"]
+            elif uq_config[key_i][param_i]["type"] == "value":
+                value_name = uq_config[key_i][param_i]["value_name"]
                 param_dict[moose_path] = copy(float(param_moose[value_name]))
             else:
                 raise NotImplementedError
             
-            if "fit_poly" in config["uncertain-params"][key_i][param_i].keys():
-                coeffs = np.polyfit(x,y, deg=config["uncertain-params"][key_i][param_i]["fit_poly"]["deg"])
+            if "fit_poly" in uq_config[key_i][param_i].keys():
+                coeffs = np.polyfit(x,y, deg=uq_config[key_i][param_i]["fit_poly"]["deg"])
                 param_dict[moose_path] = copy(coeffs)
     
     return param_dict, distrib_dict
@@ -38,8 +38,10 @@ def setup_new_moose_input(config, perturbed_param_dict, basedir_abs, sample_dir_
     for key_i in config:
         for param_i in config[key_i]:
             moose_path = f'/{key_i}/{param_i}'
+            print("param moose pre")
             param_moose = moosetree.find(moose_input_obj, func=lambda n: n.fullpath == moose_path)
-            
+            print("param moose post")
+
             if config[key_i][param_i]["type"] == "csv":
                 data = np.loadtxt(path.join(basedir_abs, param_moose["data_file"]), delimiter=",")
                 x = data[0]
@@ -56,17 +58,19 @@ def setup_new_moose_input(config, perturbed_param_dict, basedir_abs, sample_dir_
                     y_out = perturbed_poly(x, perturbed_param_dict[moose_path])
                     param_moose["y"] = " ".join(map(str, y_out.tolist()))
                 else:
-                    print(config[key_i][param_i].keys())
+                    # print(config[key_i][param_i].keys())
                     raise NotImplementedError
             elif config[key_i][param_i]["type"] == "value":
+                print("config is value")
                 value_name = config[key_i][param_i]["value_name"]
+                print("config is value a")
+                print(moose_path, param_moose)
+                print("value name is", value_name)
                 param_moose[value_name] = perturbed_param_dict[moose_path]
+                print("config is value b")
             else:
                 raise NotImplementedError
             
-            # if "fit_poly" in config["uncertain-params"][key_i][param_i].keys():
-            #     coeffs = np.polyfit(x,y, deg=config["uncertain-params"][key_i][param_i]["fit_poly"]["deg"])
-            #     param_dict[moose_path] = copy(coeffs)
     pyhit.write(f"{sample_dir_abs}/{moose_input_fname}", moose_input_obj)
     return None
 
