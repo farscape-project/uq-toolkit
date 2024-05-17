@@ -13,6 +13,9 @@ class SampleDistributionBase(ABC):
             size = baseline_value.shape
         return size
     
+    def _random_sample(self, baseline_value):
+        return self.distribution(self.val_0, self.val_1, size=self._get_size(baseline_value)).squeeze()
+
 
 class SampleDistributions(SampleDistributionBase):
     def __init__(self, distribution_string, val_0, val_1):
@@ -22,7 +25,7 @@ class SampleDistributions(SampleDistributionBase):
         pass
 
     def get_sample(self, baseline_value):
-        return self.distribution(self.val_0, self.val_1, size=self._get_size(baseline_value)).squeeze()
+        return self._random_sample(baseline_value)
     
 class SampleRelativeDistributions(SampleDistributionBase):
     def __init__(self, distribution_string, val_0, val_1):
@@ -32,7 +35,7 @@ class SampleRelativeDistributions(SampleDistributionBase):
         pass
 
     def get_sample(self, baseline_value):
-        return baseline_value * self.distribution(self.val_0, self.val_1, size=self._get_size(baseline_value)).squeeze()
+        return baseline_value * self._random_sample(baseline_value)
 
 def setup_sample_dict(distribution_dict):
     sample_dict = dict.fromkeys(distribution_dict.keys())
