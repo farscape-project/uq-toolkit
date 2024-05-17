@@ -6,12 +6,14 @@ import numpy as np
 
 def parse_moose_to_param_dict(config, moose_input):
     param_dict = {}
+    distrib_dict = {}
     for key_i in config["uncertain-params"]:
         for param_i in config["uncertain-params"][key_i]:
             moose_path = f'/{key_i}/{param_i}'
             param_moose = moosetree.find(moose_input, func=lambda n: n.fullpath == moose_path)
             # print(param_i, list(param_moose.params()))
             
+            distrib_dict[moose_path] = copy(config["uncertain-params"][key_i][param_i]["distribution"])
             if config["uncertain-params"][key_i][param_i]["type"] == "csv":
                 data = np.loadtxt(path.join(config['workdir'], config['baseline_dir'],param_moose["data_file"]), delimiter=",")
                 x = data[0]
@@ -29,7 +31,7 @@ def parse_moose_to_param_dict(config, moose_input):
                 coeffs = np.polyfit(x,y, deg=config["uncertain-params"][key_i][param_i]["fit_poly"]["deg"])
                 param_dict[moose_path] = copy(coeffs)
     
-    return param_dict
+    return param_dict, distrib_dict
 
 def setup_new_moose_input(config, perturbed_param_dict, basedir_abs, sample_dir_abs, moose_input_fname, moose_input_obj):
 
@@ -44,7 +46,7 @@ def setup_new_moose_input(config, perturbed_param_dict, basedir_abs, sample_dir_
                 if "fit_poly" in config[key_i][param_i].keys():
                     y_out = perturbed_poly(x, perturbed_param_dict[moose_path])
                     out_path = f"{sample_dir_abs}/{param_moose['data_file']}"
-                    print("writing perturbed file to ", out_path)
+                    # print("writing perturbed file to ", out_path)
                     np.savetxt(out_path, np.c_[x, y_out].T)
                 
             elif config[key_i][param_i]["type"] == "xy":
@@ -53,7 +55,6 @@ def setup_new_moose_input(config, perturbed_param_dict, basedir_abs, sample_dir_
                 if "fit_poly" in config[key_i][param_i].keys():
                     y_out = perturbed_poly(x, perturbed_param_dict[moose_path])
                     param_moose["y"] = " ".join(map(str, y_out.tolist()))
-                    print(y_out)
                 else:
                     print(config[key_i][param_i].keys())
                     raise NotImplementedError
@@ -74,8 +75,6 @@ def perturbed_poly(x, coeffs):
     Take a perturbed set of polynomial coefficients, and compute y for a given series of x
     """
     deg_list = np.arange(0, coeffs.size, 1)[::-1]
-    print(deg_list)
-    print(coeffs)
     # # set fine sampling for x axis, and use this to sample function
     # x_fit = np.linspace(x[0], x[-1], 100)
     y_fit = np.sum(coeffs*(x[:,None]**deg_list[None,:]), axis=-1)

@@ -8,6 +8,7 @@ import hjson as json
 import pyhit
 import moosetree
 
+import uq_sampler
 from launcher import UQLauncher
 from moose_tools import parse_moose_to_param_dict, setup_new_moose_input
 from uq_logger import UncertaintyLogger
@@ -37,15 +38,12 @@ def get_inputs():
     return parser.parse_args()
 
 
-def perturb_params(param_dict) -> dict:
+def perturb_params(param_dict, sampler_dict) -> dict:
     perturbed_param_dict = {}
     for key_i in param_dict:
-        if type(param_dict[key_i]) is float:
-            perturbed_param_dict[key_i] = param_dict[key_i] * np.random.normal(1, 0.01)
-        elif type(param_dict[key_i]) is np.ndarray:
-            perturbed_param_dict[key_i] = param_dict[key_i] * np.random.normal(1, 0.01, size=param_dict[key_i].shape)
-        else:
-            raise TypeError(f"incorrect type for {param_dict[key_i]} is {type(param_dict[key_i])}")
+        # get random sample from distribution defined in json
+        perturbed_param_dict[key_i] = sampler_dict[key_i].get_sample(param_dict[key_i])
+        print(f"{key_i} is", param_dict[key_i], "sample is", perturbed_param_dict[key_i])
     return perturbed_param_dict
 
 if __name__ == "__main__":
@@ -56,16 +54,14 @@ if __name__ == "__main__":
     uq_history = UncertaintyLogger()#moose_params, config["baseline_dir"])
     launcher = UQLauncher(config["launcher"], config["template_launcher_script"])
 
-    # TODO: Need to do loop here over N apps?
     baselinedir_abs_path = os.path.join(config["workdir"],config["baseline_dir"])
     # parser for reading MOOSE input files
     moose_input_obj = pyhit.load(f"{baselinedir_abs_path}/{config['moose-input']}")
 
     # find uncertain parameters in MOOSE input file corresponding to json
-    moose_params = parse_moose_to_param_dict(config, moose_input_obj)
-    print(moose_params)
+    moose_params, distrib_dict = parse_moose_to_param_dict(config, moose_input_obj)
 
-    # setup class to make script for running simulations
+    sampler_dict = uq_sampler.setup_sample_dict(distrib_dict)
     
     for sample_i in range(config["num_samples"]):
         sample_string = f"sample{sample_i}"
@@ -77,7 +73,7 @@ if __name__ == "__main__":
             copytree(baselinedir_abs_path, new_dir)
 
         # sample parameters
-        perturbed_param_dict = perturb_params(moose_params)
+        perturbed_param_dict = perturb_params(moose_params, sampler_dict)
         uq_history.record_sample(sample_string, perturbed_param_dict)
 
         # send sample parameters to corresponding locations in moose input file

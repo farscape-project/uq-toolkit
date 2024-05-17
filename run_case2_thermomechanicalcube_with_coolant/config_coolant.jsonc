@@ -16,7 +16,7 @@
             {
                 "type" : "value", // implies this is a scalar
                 "value_name":"f",
-                "distribution": ["normal", 0, 0.01] // don't think this does anything right now
+                "distribution": {"name":"uniform", "args":[0, 0.5], "fraction":false},
             }
         }
     },
