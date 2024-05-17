@@ -136,6 +136,7 @@ n_elems_axial=100
 []
 
 [Outputs]
-  exodus = true
+  exodus = false
+  csv = true
   print_linear_residuals = false
 []
