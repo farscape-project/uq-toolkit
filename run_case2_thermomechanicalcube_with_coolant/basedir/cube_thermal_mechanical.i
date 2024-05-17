@@ -332,6 +332,7 @@
   petsc_options_iname = '-pc_type -pc_hypre_type -pc_hypre_boomeramg_strong_threshold -pc_hypre_boomeramg_coarsen_type -pc_hypre_boomeramg_interp_type '
   petsc_options_value = '   hypre      boomeramg                                  0.7                             HMIS                           ext+i '
  
+  fixed_point_max_its = 15
 
 []
   
@@ -356,7 +357,7 @@
     source_variable = 'T' 
     to_boundaries = "innerpipe"
     variable = temp_received # *to variable*
-    num_nearest_points = 30
+    num_nearest_points = 10
   []
   [heatflux_from_parent_to_child]
     type = MultiAppGeneralFieldNearestLocationTransfer
@@ -365,7 +366,7 @@
     source_variable = aux_flux_boundary # *from variable*
     from_boundaries = "innerpipe"
     variable = q_wall # *to variable*
-    num_nearest_points = 200
+    num_nearest_points = 20
   []
 []
 
