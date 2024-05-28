@@ -97,10 +97,8 @@ if __name__ == "__main__":
         for (moose_input_obj, app_i) in zip(moose_input_obj_list, app_name_list):
             print(sample_string, app_i)
             setup_new_moose_input(config["apps"][app_i]["uncertain-params"], perturbed_param_dict[app_i], baselinedir_abs_path, new_dir, app_i, moose_input_obj)
-    """   
         launcher.append_to_scheduler(new_dir)
     launcher.write_launcher(f"launcher.sh")
-    """
     for app_i in app_name_list:
         uq_history[app_i].write_logger(f"{config['apps'][app_i]['uq_log_name']}.json")
 
