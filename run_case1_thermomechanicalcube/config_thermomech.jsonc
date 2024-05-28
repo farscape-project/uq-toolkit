@@ -19,20 +19,20 @@
                     "copper_tc" :
                     {
                         "type": "csv",
-                        "distribution": {"name":"uniform", "lower":0.99, "upper":1.01, "fraction":true},
+                        "distribution": {"name":"uniform", "loc":0.99, "scale":0.02, "fraction":true},
                         "fit_poly": {"deg":1},
                     },
                     "copper_sh" :
                     {
                         "type": "csv",
-                        "distribution": {"name":"uniform", "lower":0.99, "upper":1.01, "fraction":true},
+                        "distribution": {"name":"uniform", "loc":0.99, "scale":0.02, "fraction":true},
                         "fit_poly": {"deg":1},
                         "deg": 1
                     },
                     "copper_thermal_expansion" :
                     {
                         "type": "csv",
-                        "distribution": {"name":"uniform", "lower":0.99, "upper":1.01, "fraction":true},
+                        "distribution": {"name":"uniform", "loc":0.99, "scale":0.02, "fraction":true},
                         "fit_poly": {"deg":3},
                     },
                 },
@@ -42,7 +42,7 @@
                     {
                         "type": "xy", // will parse "x" and "y" parameter from moose input
                         "fit_poly": {"deg":1},
-                        "distribution": {"name":"uniform", "lower":0.99, "upper":1.01, "fraction":true},
+                        "distribution": {"name":"uniform", "loc":0.99, "scale":0.02, "fraction":true},
                     }
                 },
                 "BCs":
@@ -51,7 +51,7 @@
                     {
                         "type" : "value", // implies this is a scalar
                         "value_name":"value",
-                        "distribution": {"name":"uniform", "lower":0.95, "upper": 1.05, "fraction":true},
+                        "distribution": {"name":"uniform", "loc":0.95, "scale":0.1, "fraction":true},
                     }
                 }
             },
@@ -60,13 +60,13 @@
     },
     "paths":
     {
-        "workdir":"/work4/cse/scarf1324/py_cube_uq/gitsynced_repo/run_case1_thermomechanicalcube/",
+        "workdir":"./",
         "baseline_dir":"basedir",
         // "moose-input": "cube_thermal_mechanical.i",
         "executable":"/home/vol04/scarf1324/moose-volumejunctionfix/modules/combined/combined-opt",
     },
 
-    "sampler" : "monte_carlo",
+    "sampler" : "montecarlo",
     "num_samples" : 10,
     // "nproc_per_sample" : 32,
     "launcher" : "bash",

@@ -77,7 +77,7 @@ if __name__ == "__main__":
 
     print(distrib_dict)
     # sampler_dict = uq_sampler.setup_sample_dict(distrib_dict)
-    sampler_dict = uq_sampler.setup_spacefilling_sampler(moose_params, distrib_dict, config["num_samples"])
+    sampler_dict = uq_sampler.setup_uqpy_sampler(moose_params, distrib_dict, config["num_samples"], sampler_string=config["sampler"])
     
     for sample_i in range(config["num_samples"]):
         sample_string = f"sample{sample_i}"
