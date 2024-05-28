@@ -11,7 +11,6 @@ def parse_moose_to_param_dict(uq_config, path_config, moose_input):
         for param_i in uq_config[key_i]:
             moose_path = f'/{key_i}/{param_i}'
             param_moose = moosetree.find(moose_input, func=lambda n: n.fullpath == moose_path)
-            # print(param_i, list(param_moose.params()))
             
             distrib_dict[moose_path] = copy(uq_config[key_i][param_i]["distribution"])
             if uq_config[key_i][param_i]["type"] == "csv":
@@ -38,9 +37,7 @@ def setup_new_moose_input(config, perturbed_param_dict, basedir_abs, sample_dir_
     for key_i in config:
         for param_i in config[key_i]:
             moose_path = f'/{key_i}/{param_i}'
-            print("param moose pre")
             param_moose = moosetree.find(moose_input_obj, func=lambda n: n.fullpath == moose_path)
-            print("param moose post")
 
             if config[key_i][param_i]["type"] == "csv":
                 data = np.loadtxt(path.join(basedir_abs, param_moose["data_file"]), delimiter=",")
@@ -48,7 +45,6 @@ def setup_new_moose_input(config, perturbed_param_dict, basedir_abs, sample_dir_
                 if "fit_poly" in config[key_i][param_i].keys():
                     y_out = perturbed_poly(x, perturbed_param_dict[moose_path])
                     out_path = f"{sample_dir_abs}/{param_moose['data_file']}"
-                    # print("writing perturbed file to ", out_path)
                     np.savetxt(out_path, np.c_[x, y_out].T)
                 
             elif config[key_i][param_i]["type"] == "xy":
@@ -58,16 +54,10 @@ def setup_new_moose_input(config, perturbed_param_dict, basedir_abs, sample_dir_
                     y_out = perturbed_poly(x, perturbed_param_dict[moose_path])
                     param_moose["y"] = " ".join(map(str, y_out.tolist()))
                 else:
-                    # print(config[key_i][param_i].keys())
                     raise NotImplementedError
             elif config[key_i][param_i]["type"] == "value":
-                print("config is value")
                 value_name = config[key_i][param_i]["value_name"]
-                print("config is value a")
-                print(moose_path, param_moose)
-                print("value name is", value_name)
                 param_moose[value_name] = perturbed_param_dict[moose_path]
-                print("config is value b")
             else:
                 raise NotImplementedError
             
