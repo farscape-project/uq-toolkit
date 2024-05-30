@@ -13,10 +13,8 @@
     "heat-transfer":
     {
         // "source" : "none",
-        // "source" : "HeatTransferFromSpecifiedTemperature1Phase", // ["HeatTransferFromSpecifiedTemperature1Phase", "HeatTransferFromExternalAppTemperature1Phase"]
-        // "T_wall" : 500
-        // "source" : "HeatTransferFromExternalAppTemperature1Phase",
-        "source" : "HeatTransferFromExternalAppHeatFlux1Phase",
+        "source" : "HeatTransferFromSpecifiedTemperature1Phase", // ["HeatTransferFromSpecifiedTemperature1Phase", "HeatTransferFromExternalAppTemperature1Phase"]
+        "T_wall" : 500
     },
     "scaling-settings":
     {
@@ -75,7 +73,7 @@
     {
         "execute_on" : "'initial timestep_end final'",
         // "exodus" : false,
-        "vtk" : true, 
+        "vtk" : false, 
         "interval" : 1, 
         "print_linear_residuals": false, 
         "csv" : true,
@@ -84,10 +82,10 @@
     "extra-objects":
     {
         "[Executioner]":"  [./TimeStepper]\n   type = ConstantDT\n   dt = 0.01\n   cutback_factor_at_failure = 0.1\n  [../]",
-        "[Outputs]":"  [out]\n   type = Checkpoint\n   minimum_time_interval = 1\n   num_files = 5\n  [../]",
+        // "[Outputs]":"  [out]\n   type = Checkpoint\n   minimum_time_interval = 1\n   num_files = 5\n  [../]",
     },
-    "restart-dict": {
-        "restart-string" : "[Problem]\n  restart_file_base=RESTARTDIR\n  allow_initial_conditions_with_restart=true\n[]",
-        "restart-dir" : "coolant_out_cp/0153",
-    }
+    // "restart-dict": {
+    //     "restart-string" : "[Problem]\n  restart_file_base=RESTARTDIR\n  allow_initial_conditions_with_restart=true\n[]",
+    //     "restart-dir" : "coolant_out_cp/0153",
+    // }
 }
