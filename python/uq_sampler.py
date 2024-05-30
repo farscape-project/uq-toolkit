@@ -135,11 +135,8 @@ def setup_spacefilling_sampler(main_param_dict, main_distribution_dict, n_sample
 
 def setup_uqpy_sampler(main_param_dict, main_distribution_dict, n_samples, sampler_string="latinhypercube"):
 
-    upper_bound = []
-    lower_bound = []
     num_features = 0
     distribution_list = []
-    param_list = []
     for app_i in main_distribution_dict.keys():
         distribution_dict = main_distribution_dict[app_i]
         param_dict = main_param_dict[app_i]
