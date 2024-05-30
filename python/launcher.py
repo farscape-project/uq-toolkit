@@ -1,13 +1,13 @@
 from os import path
 
 class UQLauncher:
-    def __init__(self, launcher_type, launcher_script):
+    def __init__(self, launcher_type, launcher_script, launcher_dir):
         self.launcher_type = launcher_type
         if self.launcher_type == "None":
             self.launcher_type = None
         self.launch_string = self._get_launcher_string()
         if self.launcher_type is not None:
-            assert path.exists(f"basedir/{launcher_script}"), "template launcher script does not exist"
+            assert path.exists(f"{launcher_dir}/{launcher_script}"), "template launcher script does not exist"
         self.launcher_script = launcher_script
         self.scheduler_text = self._setup_scheduler()
 
@@ -24,7 +24,6 @@ class UQLauncher:
             raise NotImplementedError
 
     def _setup_scheduler(self):
-        # TODO: Add slurm and others
         scheduler_text = []
         if self.launcher_type in ["bash", "slurm"]:
             # note that when using mpi, each simulation is run in parallel, but the batch itself is run in serial

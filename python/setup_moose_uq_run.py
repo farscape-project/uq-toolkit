@@ -52,10 +52,10 @@ if __name__ == "__main__":
     args = get_inputs()
     with open(args.config, "r") as f:
         config = json.load(f)
-    # setup helper classes
-    launcher = UQLauncher(config["launcher"], config["template_launcher_script"])
-
     baselinedir_abs_path = os.path.join(config["paths"]["workdir"],config["paths"]["baseline_dir"])
+    # setup helper classes
+    launcher = UQLauncher(config["launcher"], config["template_launcher_script"], launcher_dir=baselinedir_abs_path)
+
     # parser for reading MOOSE input files
     moose_input_obj_list = []
     # moose_params_list = []
