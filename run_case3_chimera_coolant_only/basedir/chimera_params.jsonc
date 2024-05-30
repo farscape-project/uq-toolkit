@@ -1,0 +1,93 @@
+{
+    "moopy-path":"/home/vol04/scarf1324/moopy",
+    "config-name": "coolant",
+    "min_num_elements" : 20, //20, // minimum number of elements per branch
+    "max_num_elements" : 200, //100, // maximum number of elements per branch
+    "element_length_ratio" : 1,
+    // "dt" : 1e-5,
+    "straight_pipe_friction_factor" : 0.02, // empirical parameter
+    "bent_pipe_friction_factor" : 0.0, // empiricial parameter
+    "volume_junction_loss_factor" : 0.0, // empirical parameter. When non-zero, seems to cause NaN in solution somehow...
+    "fluid" : "simple-water", //"stiff-water", // options = ["simple-water", "stiff-water"] for SimpleFluidProperties or StiffenedGasFluidProperties
+    "closure" : "simple", // "thm" not supported with "HeatTransferFromExternalAppHeatFlux1Phase"
+    "heat-transfer":
+    {
+        // "source" : "none",
+        // "source" : "HeatTransferFromSpecifiedTemperature1Phase", // ["HeatTransferFromSpecifiedTemperature1Phase", "HeatTransferFromExternalAppTemperature1Phase"]
+        // "T_wall" : 500
+        // "source" : "HeatTransferFromExternalAppTemperature1Phase",
+        "source" : "HeatTransferFromExternalAppHeatFlux1Phase",
+    },
+    "scaling-settings":
+    {
+        "scaling_factor_1phase": "1e-1 1e-4 1e-7",
+        "scaling_factor_rhoEV": "1e-4"
+    },
+    "chimera-settings":
+    {
+        "low-pressure":
+        {
+            // "T_init" : 300, // initialise at 100 C 
+            // "T_inlet" : 300, // 150 C 
+            // "p_init" : 1.0e5, // 5 MPa
+            // "p_outlet" : 1.0e5, // 5 MPa
+            // "density_init" : 500, // estimate density is about 500 kg/m3 in these conditions
+            
+            "T_init" : 420, // initialise at 100 C 
+            "T_inlet" : 420, // 150 C 
+            "p_init" : 5.0e6, // 5 MPa
+            "p_outlet" : 5.0e6, // 5 MPa
+            "flowrate_Lpermin" : 1000.0, // should be 1000 L/min
+        },
+        "high-pressure":
+        {
+            "T_init" : 606, // 333 C 
+            "p_init" : 15.5e6, // 15.5 MPa
+            "flowrate_Lpermin" : 650.0, // should be 650 L/min
+        }
+    },
+    "solve_options":
+    {
+        "type" : "Transient",
+        "start_time" : 0.0,
+        "end_time" : 1500.0,
+        // "dt" : 1e-3,
+        "dtmin" : 1e-9,
+        "steady_state_detection" : "true",
+        "solve_type" : "NEWTON",
+        "line_search" : "basic",
+        "nl_abs_tol" : 1e-5,
+        "nl_rel_tol" : 1e-7,
+        "nl_max_its" : 10,
+        // "l_tol" : 1e-7,
+        // "l_tol" : 1e-5,
+        "l_max_its" : 100,
+
+        // "petsc_options" : "-pc_svd_monitor -snes_converged_reason",
+        "petsc_options_iname" : "-pc_type",
+        "petsc_options_value" : "lu",
+
+        // "petsc_options" : "-snes_monitor -snes_converged_reason -snes_linesearch_monitor -ksp_monitor_true_residual -ksp_converged_reason"
+    },
+    // "output_interval" : 100,
+    "rdg_slope_reconstruction" : "full",
+    "outputs_kwargs" :
+    {
+        "execute_on" : "'initial timestep_end final'",
+        // "exodus" : false,
+        "vtk" : true, 
+        "interval" : 1, 
+        "print_linear_residuals": false, 
+        "csv" : true,
+        // "checkpoint" : true
+    },
+    "extra-objects":
+    {
+        "[Executioner]":"  [./TimeStepper]\n   type = ConstantDT\n   dt = 0.01\n   cutback_factor_at_failure = 0.1\n  [../]",
+        "[Outputs]":"  [out]\n   type = Checkpoint\n   minimum_time_interval = 1\n   num_files = 5\n  [../]",
+    },
+    "restart-dict": {
+        "restart-string" : "[Problem]\n  restart_file_base=RESTARTDIR\n  allow_initial_conditions_with_restart=true\n[]",
+        "restart-dir" : "coolant_out_cp/0153",
+    }
+}

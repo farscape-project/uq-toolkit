@@ -1,0 +1,35 @@
+{
+    "apps":
+    {
+        "chimera_params.jsonc":
+        {
+            "type":"json",
+            "uncertain-params":
+            {
+                "straight_pipe_friction_factor":
+                {
+                    "type" : "value", // implies this is a scalar
+                    "distribution": {"name":"uniform", "loc":0.0, "scale":0.1, "fraction":false},
+                }
+            },
+            "uq_log_name": "uq_log_coolant",
+        }
+    },
+    "paths":
+    {
+        "workdir":"/work4/cse/scarf1324/py_cube_uq/gitsynced_repo/run_case3_chimera_coolant_only/",
+        "baseline_dir":"basedir",
+        // "moose-input": "cube_thermal_mechanical.i",
+        "executable":"/home/vol04/scarf1324/moose-volumejunctionfix/modules/combined/combined-opt",
+    },
+
+    "sampler" : "montecarlo",
+    "num_samples" : 10,
+    // "nproc_per_sample" : 32,
+    "launcher" : "slurm",
+    "template_launcher_script":"runCase.sh",
+    
+    // parameters for run
+    "launcher_name" : "launcher.sh",
+    // "num_parallel_samples" : 1, 
+}

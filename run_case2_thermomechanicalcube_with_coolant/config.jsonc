@@ -3,6 +3,7 @@
     {
         "cube_thermal_mechanical.i":
         {
+            "type":"moose",
             "uncertain-params":
             {
                 /*
@@ -59,6 +60,7 @@
         },
         "coolant.i":
         {
+            "type":"moose",
             "uncertain-params":
             {
                 "Components":

@@ -2,14 +2,18 @@ import argparse
 from copy import copy
 import os
 from shutil import copytree
+from warnings import warn
 
 import numpy as np
 import hjson as json
-import pyhit
-import moosetree
+try:
+    import pyhit
+except:
+    warn("pyhit not found")
 
 import uq_sampler
 from launcher import UQLauncher
+from json_tools import parse_json_to_param_dict, setup_new_json_input
 from moose_tools import parse_moose_to_param_dict, setup_new_moose_input
 from uq_logger import UncertaintyLogger
 
@@ -57,27 +61,35 @@ if __name__ == "__main__":
     launcher = UQLauncher(config["launcher"], config["template_launcher_script"], launcher_dir=baselinedir_abs_path)
 
     # parser for reading MOOSE input files
-    moose_input_obj_list = []
-    # moose_params_list = []
+    input_obj_list = []
+    # all_params_list = []
     # distrib_dict_list = []
     app_name_list = config["apps"].keys()
     uq_history = dict.fromkeys(app_name_list)
-    moose_params = dict.fromkeys(app_name_list)
+    all_params = dict.fromkeys(app_name_list)
     distrib_dict = dict.fromkeys(app_name_list)
     for fname in app_name_list:
         uq_history[fname] = UncertaintyLogger()
-        moose_input_obj_list.append(pyhit.load(f"{baselinedir_abs_path}/{fname}"))
         print(config["paths"])
 
-        # find uncertain parameters in MOOSE input file corresponding to json
-        moose_params_i, distrib_dict_i = parse_moose_to_param_dict(config["apps"][fname]["uncertain-params"], config["paths"], moose_input_obj_list[-1])
-        moose_params[fname] = moose_params_i
+        app_type = config["apps"][fname]["type"]
+
+        if app_type == "moose":
+            input_obj_list.append(pyhit.load(f"{baselinedir_abs_path}/{fname}"))
+            # find uncertain parameters in MOOSE input file corresponding to json
+            all_params_i, distrib_dict_i = parse_moose_to_param_dict(config["apps"][fname]["uncertain-params"], config["paths"], input_obj_list[-1])
+        elif app_type == "json":
+            with open(f"{baselinedir_abs_path}/{fname}", "r") as f:
+                json_dict = json.load(f)
+            input_obj_list.append(json_dict)
+            all_params_i, distrib_dict_i = parse_json_to_param_dict(config["apps"][fname]["uncertain-params"], input_obj_list[-1])
+        all_params[fname] = all_params_i
         distrib_dict[fname] = distrib_dict_i
 
 
     print(distrib_dict)
     # sampler_dict = uq_sampler.setup_sample_dict(distrib_dict)
-    sampler_dict = uq_sampler.setup_uqpy_sampler(moose_params, distrib_dict, config["num_samples"], sampler_string=config["sampler"])
+    sampler_dict = uq_sampler.setup_uqpy_sampler(all_params, distrib_dict, config["num_samples"], sampler_string=config["sampler"])
     
     for sample_i in range(config["num_samples"]):
         sample_string = f"sample{sample_i}"
@@ -89,14 +101,19 @@ if __name__ == "__main__":
             copytree(baselinedir_abs_path, new_dir)
 
         # sample parameters
-        perturbed_param_dict = perturb_params(moose_params, sampler_dict)
+        perturbed_param_dict = perturb_params(all_params, sampler_dict)
         for app_i in app_name_list:
             uq_history[app_i].record_sample(sample_string, perturbed_param_dict[app_i])
 
-        # send sample parameters to corresponding locations in moose input file
-        for (moose_input_obj, app_i) in zip(moose_input_obj_list, app_name_list):
+        # send sample parameters to corresponding locations in moose input file (or others)
+        for (input_obj, app_i) in zip(input_obj_list, app_name_list):
             print(sample_string, app_i)
-            setup_new_moose_input(config["apps"][app_i]["uncertain-params"], perturbed_param_dict[app_i], baselinedir_abs_path, new_dir, app_i, moose_input_obj)
+
+            app_type = config["apps"][app_i]["type"]
+            if app_type == "moose":
+                setup_new_moose_input(config["apps"][app_i]["uncertain-params"], perturbed_param_dict[app_i], baselinedir_abs_path, new_dir, app_i, input_obj)
+            elif app_type == "json":
+                setup_new_json_input(config["apps"][app_i]["uncertain-params"], perturbed_param_dict[app_i], baselinedir_abs_path, new_dir, app_i, input_obj)
         launcher.append_to_scheduler(new_dir)
     launcher.write_launcher(f"launcher.sh")
     for app_i in app_name_list:
