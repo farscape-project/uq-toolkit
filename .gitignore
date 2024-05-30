@@ -4,13 +4,18 @@
 *_out*.e
 .jitcache
 *.msh
+dev*
 
 # uq files
 sample*
 launcher.sh
 uq_log*.json
 
+clean.sh
+Allrun.sh
+
 # system files
 *.swp
-run_case1_thermomechanicalcube/uq_log.json
+uq_log.json
+launch.json
 __pycache__
