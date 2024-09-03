@@ -29,7 +29,7 @@ class UQLauncher:
 
     def _setup_scheduler(self):
         scheduler_text = []
-        if self.launcher_type in ["bash", "slurm"]:
+        if self.launcher_type in ["bash", "slurm", "lsf"]:
             # note that when using mpi, each simulation is run in parallel, but the batch itself is run in serial
             scheduler_text.append("#!/bin/bash\n\n")
             pass
@@ -40,13 +40,13 @@ class UQLauncher:
         return scheduler_text
 
     def append_to_scheduler(self, newdir):
-        if self.launcher_type in ["bash", "slurm"]:
+        if self.launcher_type in ["bash", "slurm", "lsf"]:
             self.scheduler_text.append(f"cd {newdir}\n")
             self.scheduler_text.append(f"{self.launch_string} {self.launcher_script} \n")
             self.scheduler_text.append(f"cd -\n")
 
     def write_launcher(self, launcher_name):
-        if self.launcher_type in ["bash", "slurm"]:
+        if self.launcher_type in ["bash", "slurm", "lsf"]:
             self._write_bash_launcher(launcher_name)
 
     def _write_bash_launcher(self, launcher_name):
