@@ -7,7 +7,11 @@ class UQLauncher:
             self.launcher_type = None
         self.launch_string = self._get_launcher_string()
         if self.launcher_type is not None:
-            assert path.exists(f"{launcher_dir}/{launcher_script}"), "template launcher script does not exist"
+            expected_path = f"{launcher_dir}/{launcher_script}"
+            assert path.exists(expected_path), (
+                "template launcher script does not exist \n"
+                f"check this path is correct: {expected_path}"
+            )
         self.launcher_script = launcher_script
         self.scheduler_text = self._setup_scheduler()
 
