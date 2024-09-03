@@ -63,8 +63,6 @@
     {
         "workdir":"./",
         "baseline_dir":"basedir",
-        // "moose-input": "cube_thermal_mechanical.i",
-        "executable":"/home/vol04/scarf1324/moose-volumejunctionfix/modules/combined/combined-opt",
     },
 
     "sampler" : "montecarlo",
