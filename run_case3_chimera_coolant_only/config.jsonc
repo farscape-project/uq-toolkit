@@ -17,7 +17,7 @@
     },
     "paths":
     {
-        "workdir":"/work4/cse/scarf1324/py_cube_uq/gitsynced_repo/run_case3_chimera_coolant_only/",
+        "workdir":"./",
         "baseline_dir":"basedir",
         // "moose-input": "cube_thermal_mechanical.i",
         "executable":"/home/vol04/scarf1324/moose-volumejunctionfix/modules/combined/combined-opt",
@@ -27,7 +27,7 @@
     "num_samples" : 10,
     // "nproc_per_sample" : 32,
     "launcher" : "slurm",
-    "template_launcher_script":"runCase.sh",
+    "template_launcher_script": "runCase.sh",
     
     // parameters for run
     "launcher_name" : "launcher.sh",
