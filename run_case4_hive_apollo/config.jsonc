@@ -1,0 +1,63 @@
+{
+    "apps":
+    {
+        "SS316LSTCComplexAFormEM.i":
+        {
+            "type":"moose",
+            "uncertain-params":
+            {
+                "Functions":
+                {
+                    "ss316l-rx" :
+                    {
+                        "type": "csv",
+                        "distribution": {"name":"uniform", "loc":0.95, "scale":0.1, "fraction":true},
+                        "fit_poly": {"deg":1},
+                    },
+                },
+                "Coefficients":
+                {
+                    "CurrentMagnitude":
+                    {
+                        "type": "value", // will parse "x" and "y" parameter from moose input
+                        "value_name":"value",
+                        "distribution": {"name":"uniform", "loc":900, "scale":200,  "fraction":false},
+                    }
+                }
+            },
+            "uq_log_name": "uq_log_aform",
+        },
+        "SS316LSTCThermal.i":
+        {
+            "type":"moose",
+            "uncertain-params":
+            {
+                "Functions":
+                {
+                    "water-htc-func" :
+                    {
+                        "type": "csv",
+                        "distribution": {"name":"uniform", "loc":0.9, "scale":0.2, "fraction":true},
+                        "scale_all":{},
+                    }
+                }
+            },
+            "uq_log_name": "uq_log_thermal",
+        }
+    },
+    "paths":
+    {
+        "workdir":"./",
+        "baseline_dir":"basedir",
+        "executable":"/work4/cse/scarf1324/apollo/apollo-opt",
+    },
+    
+    "sampler" : "latinhypercube",
+    "num_samples" : 10,
+    "launcher" : "slurm",
+    "template_launcher_script":"runCase.sh",
+    
+    // parameters for run
+    "launcher_name" : "launcher.sh",
+}
+
