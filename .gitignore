@@ -4,6 +4,10 @@
 *_out*.e
 .jitcache
 *.msh
+*.e
+*.png
+*.cub5
+
 dev*
 
 # uq files
@@ -19,3 +23,4 @@ Allrun.sh
 uq_log.json
 launch.json
 __pycache__
+.vscode
