@@ -1,5 +1,6 @@
 from os import path
 
+
 class UQLauncher:
     def __init__(self, launcher_type, launcher_script, launcher_dir):
         self.launcher_type = launcher_type
@@ -42,7 +43,9 @@ class UQLauncher:
     def append_to_scheduler(self, newdir):
         if self.launcher_type in ["bash", "slurm", "lsf"]:
             self.scheduler_text.append(f"cd {newdir}\n")
-            self.scheduler_text.append(f"{self.launch_string} {self.launcher_script} \n")
+            self.scheduler_text.append(
+                f"{self.launch_string} {self.launcher_script} \n"
+            )
             self.scheduler_text.append(f"cd -\n")
 
     def write_launcher(self, launcher_name):
