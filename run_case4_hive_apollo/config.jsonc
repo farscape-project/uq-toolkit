@@ -11,8 +11,8 @@
                     "ss316l-rx" :
                     {
                         "type": "csv",
-                        "distribution": {"name":"uniform", "loc":0.95, "scale":0.1, "fraction":true},
-                        "fit_poly": {"deg":1},
+                        "distribution": {"name":"uniform", "loc":0.9, "scale":0.2, "fraction":true},
+                        "scale_all":{},
                     },
                 },
                 "Coefficients":
