@@ -2,6 +2,7 @@ from copy import copy
 import hjson as json
 import numpy as np
 
+
 class UncertaintyLogger:
     def __init__(self):
         self.out_dict = {}
@@ -17,6 +18,5 @@ class UncertaintyLogger:
             self.out_dict[sample_name][key_i] = value_to_store
 
     def write_logger(self, logname):
-        with open(logname, 'w', encoding='utf-8') as f:
+        with open(logname, "w", encoding="utf-8") as f:
             json.dump(self.out_dict, f, ensure_ascii=False, indent=4)
-        
