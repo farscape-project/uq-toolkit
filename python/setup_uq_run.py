@@ -111,7 +111,20 @@ if __name__ == "__main__":
 
             app_type = config["apps"][app_i]["type"]
             if app_type == "moose":
-                setup_new_moose_input(config["apps"][app_i]["uncertain-params"], perturbed_param_dict[app_i], baselinedir_abs_path, new_dir, app_i, input_obj)
+                """
+                load moose input from basedir again for each sample, otherwise we have bug
+                that perturbations will be applied to already perturbed parameters 
+                (instead of baseline values)
+                """
+                input_obj_clean = pyhit.load(f"{baselinedir_abs_path}/{app_i}")
+                setup_new_moose_input(
+                    config["apps"][app_i]["uncertain-params"], 
+                    perturbed_param_dict[app_i], 
+                    baselinedir_abs_path, 
+                    new_dir, 
+                    app_i, 
+                    input_obj_clean
+                )
             elif app_type == "json":
                 setup_new_json_input(config["apps"][app_i]["uncertain-params"], perturbed_param_dict[app_i], baselinedir_abs_path, new_dir, app_i, input_obj)
         launcher.append_to_scheduler(new_dir)
