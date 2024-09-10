@@ -22,7 +22,7 @@ class UQLauncher:
         elif self.launcher_type == "slurm":
             return "sbatch "
         elif self.launcher_type == "lsf":
-            return "bsub < "
+            return "bsub "
         elif self.launcher_type == None:
             return
         else:
@@ -40,11 +40,15 @@ class UQLauncher:
             raise NotImplementedError
         return scheduler_text
 
-    def append_to_scheduler(self, newdir):
+    def append_to_scheduler(self, newdir, job_name):
         if self.launcher_type in ["bash", "slurm", "lsf"]:
             self.scheduler_text.append(f"cd {newdir}\n")
+            # lsf has extra "<" char before script name
+            script_char = ""
+            if self.launcher_type == "lsf":
+                script_char = "<"
             self.scheduler_text.append(
-                f"{self.launch_string} {self.launcher_script} \n"
+                f"{self.launch_string} -J {job_name} {script_char} {self.launcher_script} \n"
             )
             self.scheduler_text.append(f"cd -\n")
 

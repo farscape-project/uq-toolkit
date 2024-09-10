@@ -166,7 +166,7 @@ if __name__ == "__main__":
                     app_i,
                     input_obj,
                 )
-        launcher.append_to_scheduler(new_dir)
+        launcher.append_to_scheduler(new_dir, sample_string)
     launcher.write_launcher(f"launcher.sh")
     for app_i in app_name_list:
         uq_history[app_i].write_logger(
