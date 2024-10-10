@@ -58,6 +58,12 @@ def get_inputs():
         action="store_true",
         help="Do not copy dir",
     )
+    parser.add_argument(
+        "--setup-launcher",
+        default=False,
+        action="store_true",
+        help="setup launcher (not needed if using nextflow)",
+    )
     return parser.parse_args()
 
 
@@ -90,11 +96,12 @@ if __name__ == "__main__":
         config["paths"]["workdir"], config["paths"]["baseline_dir"]
     )
     # setup helper classes
-    launcher = UQLauncher(
-        config["launcher"],
-        config["template_launcher_script"],
-        launcher_dir=baselinedir_abs_path,
-    )
+    if args.setup_launcher:
+        launcher = UQLauncher(
+            config["launcher"],
+            config["template_launcher_script"],
+            launcher_dir=baselinedir_abs_path,
+        )
 
     # parser for reading MOOSE input files
     input_obj_list = []
@@ -186,8 +193,10 @@ if __name__ == "__main__":
                     app_i,
                     input_obj,
                 )
-        launcher.append_to_scheduler(new_dir, sample_string)
-    launcher.write_launcher(f"launcher.sh")
+        if args.setup_launcher:
+            launcher.append_to_scheduler(new_dir, sample_string)
+    if args.setup_launcher:
+        launcher.write_launcher(f"launcher.sh")
     for app_i in app_name_list:
         uq_history[app_i].write_logger(
             f"{config['apps'][app_i]['uq_log_name']}.json"
