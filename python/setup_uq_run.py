@@ -39,6 +39,20 @@ def get_inputs():
         help="which json file to read?",
     )
     parser.add_argument(
+        "--basedir",
+        "-b",
+        default=None,
+        type=str,
+        help="baseline directory to make copy of (if not declared, uses json)",
+    )
+    parser.add_argument(
+        "--numsamples",
+        "-n",
+        default=None,
+        type=int,
+        help="baseline directory to make copy of (if not declared, uses json)",
+    )
+    parser.add_argument(
         "--copy-off",
         default=False,
         action="store_true",
@@ -66,6 +80,12 @@ if __name__ == "__main__":
     args = get_inputs()
     with open(args.config, "r") as f:
         config = json.load(f)
+    # allow user to overwrite json file with command line arg
+    if args.numsamples is not None:
+        config["num_samples"] = args.numsamples
+    if args.basedir is not None:
+        config["paths"]["baseline_dir"] = args.basedir
+
     baselinedir_abs_path = os.path.join(
         config["paths"]["workdir"], config["paths"]["baseline_dir"]
     )
