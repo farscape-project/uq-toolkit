@@ -181,7 +181,6 @@ def read_data(
         else:
             assert len(time_id_list) == num_steps, f"expected {num_steps}, found {len(time_id_list)} for sample {sample}"
         block_id_list.sort()
-        print(fname_list)
         field_snapshot_dict[sample] = []
         time_name = f"{basedir}/{sample}/{csvname}"
         time_dict[sample] = read_moose_csv(time_name, nozero)
