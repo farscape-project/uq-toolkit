@@ -76,9 +76,50 @@ def read_moose_csv(fname, nozero=True):
         csv_arr = csv_arr[1:]
     return csv_arr
 
+def load_all_blocks(fname_args, block_id_list, fieldname, keepmesh=False):
+    """
+    Loop over all blocks in geometry and stack field data as an array
+
+    Parameters
+    ----------
+    fname_args : list
+        list containing args used to find vtk file name.
+        Contents are [basedir, sample, time]
+
+    Returns
+    -------
+    field_data_t : array_like
+        1D array containing field point values from all blocks
+    """
+    field_data_t = []
+    mesh_list = []
+    for block in block_id_list:
+        fname_template = name_template(*fname_args, block)
+        fname_list_block = glob(fname_template)
+        if len(fname_list_block) > 1:
+            warn(f"multiple files found {fname_list_block}")
+        elif len(fname_list_block) == 0:
+            raise IndexError(f"{fname_template} not matching")
+        fname = fname_list_block[0]
+        mesh = v.load(fname)
+        field_data = mesh.pointdata[fieldname]
+        field_data_t.append(field_data)
+        del field_data
+        if keepmesh:
+            pass
+        else:
+            # delete mesh object, and create empty variable
+            # means we can keep the same loop structure
+            del mesh
+            mesh = None
+        mesh_list.append(mesh)
+    # reshape so that all points in all blocks are stacked
+    field_data_t = np.array(field_data_t).reshape(-1)
+    return field_data_t, mesh_list
+
 def read_data(
     sample_names, 
-    FIELDNAME="temperature", 
+    fieldname="temperature", 
     csvname="*_out.csv", 
     basedir=".", 
     nozero=True
@@ -94,7 +135,7 @@ def read_data(
     sample_names : list
         list of strings containing sample names (corresponding to folders)
         containing data
-    FIELDNAME : string
+    fieldname : string
         string to read values from in vedo/vtk object
 
     Returns
@@ -106,7 +147,7 @@ def read_data(
         list of ints representing size of each block, used for indexing
         when all blocks combined to one array
     mesh_base : vedo.Mesh
-        vedo mesh object containing fields to model in pointdata["FIELDNAME"]
+        vedo mesh object containing fields to model in pointdata["fieldname"]
         also contains connectivity etc.
     field_snapshot_dict : dict
         contains a dict entry for each sample. Each dict entry is a np.ndarray
@@ -128,18 +169,19 @@ def read_data(
             [int(f.split("_")[-2]) for f in fname_list]
         ).tolist()
         time_id_list.sort()
+        fname_list = sorted(
+            fname_list, key=lambda x: int(x.split("/")[-2].split("_")[-1])
+        )
+        # remove first timestep (initial cond), since variance = 0
         if nozero:
             time_id_list.pop(0)
+            fname_list.pop(0)
         if s == 0:
             num_steps = len(time_id_list)
         else:
             assert len(time_id_list) == num_steps, f"expected {num_steps}, found {len(time_id_list)} for sample {sample}"
         block_id_list.sort()
-        fname_list = sorted(
-            fname_list, key=lambda x: int(x.split("/")[-2].split("_")[-1])
-        )
-        # remove first timestep (initial cond), since variance = 0
-        fname_list = fname_list[1:]
+        print(fname_list)
         field_snapshot_dict[sample] = []
         time_name = f"{basedir}/{sample}/{csvname}"
         time_dict[sample] = read_moose_csv(time_name, nozero)
@@ -147,45 +189,19 @@ def read_data(
 
         for i, time_t in enumerate(time_id_list):
             t0 = time()
-            field_data_t = []
-            mesh_list = []
-            for block in block_id_list:
-                fname_template = name_template(basedir, sample, time_t, block)
-                fname_list_block = glob(fname_template)
-                if len(fname_list_block) > 1:
-                    warn(f"multiple files found {fname_list_block}")
-                elif len(fname_list_block) == 0:
-                    raise IndexError(f"{fname_template} not matching")
-                fname = fname_list_block[0]
-                mesh = v.load(fname)
-                field_data = mesh.pointdata[FIELDNAME]
-                field_data_t.append(field_data)
-                del field_data, mesh
-                if DEBUG:
-                    print("loading", fname, f"shape = {temp.shape}")
-            # reshape so that all points in all blocks are stacked
-            field_data_t = np.array(field_data_t).reshape(-1)
+            field_data_t, _ = load_all_blocks([basedir, sample, time_t], block_id_list, fieldname)
             field_snapshot_dict[sample].append(field_data_t)
             dataset.append(field_data_t)
         field_snapshot_dict[sample] = np.array(field_snapshot_dict[sample])
     # just take the last instance of `mesh`
     # get mesh base
-    mesh_base = []
-    for block in block_id_list:
-        time_t = time_id_list[0]
-        fname_template = name_template(basedir, sample, time_t, block)
-        fname_list_block = glob(fname_template)
-        if len(fname_list_block) > 1:
-            warn(f"multiple files found {fname_list_block}")
-        elif len(fname_list_block) == 0:
-            raise IndexError(f"{fname_template} not matching")
-        fname = fname_list_block[0]
-        mesh_base.append(v.load(fname))
+    mesh_list = []
+    _, mesh_list = load_all_blocks([basedir, sample, time_id_list[0]], block_id_list, fieldname, keepmesh=True)
 
     dataset = np.array(dataset)
     return (
         dataset,
-        mesh_base,
+        mesh_list,
         field_snapshot_dict,
         block_id_list,
         time_dict,
@@ -353,7 +369,7 @@ if __name__ == "__main__":
         time_dict,
     ) = read_data(
         sample_names, 
-        FIELDNAME=args.fieldname, 
+        fieldname=args.fieldname, 
         csvname=args.csvname, 
         basedir=args.path_to_samples,
         nozero=args.nozero
