@@ -70,8 +70,6 @@ def read_moose_csv(fname, nozero=True):
     csv_arr = np.loadtxt(
         fname, delimiter=",", usecols=[0], skiprows=1
     )
-    warn("hard-coding skipping first row")
-    csv_arr = csv_arr[1:]
     if nozero:
         csv_arr = csv_arr[1:]
     return csv_arr
