@@ -1,14 +1,14 @@
 import argparse
 from glob import glob
 import numpy as np
-import vedo as v
+import meshio
 from copy import copy
 import pyssam
 import matplotlib.pyplot as plt
 from warnings import warn
 from os import makedirs
 from time import time
-
+from datareader import ExodusReader
 
 def get_inputs():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -29,6 +29,13 @@ def get_inputs():
         default="*_out.csv",
         type=str,
         help="string for csv file to get timesteps",
+    )
+    parser.add_argument(
+        "--exodus-name",
+        "-ename",
+        default="SS316LSTCThermal_out.e",
+        type=str,
+        help="string for exodus file",
     )
     parser.add_argument(
         "--num-samples",
@@ -64,6 +71,12 @@ def name_template(basedir, sample, time, block):
     """
     return f"{basedir}/{sample}/vtk_data/{sample}/*/*_{time}_{block}_0.vtu"
 
+def name_template_exodus(basedir, sample, exodus_name):
+    """
+    Returns string needed to read VTK data used for training
+    """
+    return f"{basedir}/{sample}/{exodus_name}"
+
 def read_moose_csv(fname, nozero=True):
     if "*" in fname:
         fname = glob(fname)[0]
@@ -74,7 +87,7 @@ def read_moose_csv(fname, nozero=True):
         csv_arr = csv_arr[1:]
     return csv_arr
 
-def load_all_blocks(fname_args, block_id_list, fieldname, keepmesh=False):
+def load_all_blocks(fname_args, fieldname, exodus_name, keepmesh=False, nozero=True):
     """
     Loop over all blocks in geometry and stack field data as an array
 
@@ -90,41 +103,38 @@ def load_all_blocks(fname_args, block_id_list, fieldname, keepmesh=False):
         1D array containing field point values from all blocks
     """
     field_data_t = []
-    mesh_list = []
-    for block in block_id_list:
-        fname_template = name_template(*fname_args, block)
-        fname_list_block = glob(fname_template)
-        if len(fname_list_block) > 1:
-            warn(f"multiple files found {fname_list_block}")
-        elif len(fname_list_block) == 0:
-            raise IndexError(f"{fname_template} not matching")
-        fname = fname_list_block[0]
-        mesh = v.load(fname)
-        field_data = mesh.pointdata[fieldname]
-        field_data_t.append(field_data)
-        del field_data
-        if keepmesh:
-            pass
-        else:
-            # delete mesh object, and create empty variable
-            # means we can keep the same loop structure
-            del mesh
-            mesh = None
-        mesh_list.append(mesh)
-    # reshape so that all points in all blocks are stacked
-    field_data_t = np.array(field_data_t).reshape(-1)
-    return field_data_t, mesh_list
+    
+    fname_template = name_template_exodus(*fname_args, exodus_name)
+    fname_list_block = glob(fname_template)
+    if len(fname_list_block) > 1:
+        warn(f"multiple files found {fname_list_block}")
+    elif len(fname_list_block) == 0:
+        raise IndexError(f"{fname_template} not matching")
+    fname = fname_list_block[0]
+    mesh = meshio.read(fname)
+    # Dict may be un-ordered, but timestep ordering not important for now(?)
+    glob_dict = GlobDict(mesh.point_data)
+    field_data = glob_dict.glob(f"{fieldname}*", nozero)
+    if keepmesh:
+        pass
+    else:
+        # delete mesh object, and create empty variable
+        # means we can keep the same loop structure
+        del mesh
+        mesh = None
+    return field_data, mesh
 
 def read_data(
     sample_names, 
+    exodus_name,
     fieldname="temperature", 
     csvname="*_out.csv", 
     basedir=".", 
     nozero=True
 ):
     """
-    Loop over all sample names and read vtk files from each timestep
-    and each block.
+    Loop over all sample names and read exodus files that contain 
+    all timesteps (in seperate fields) and all blocks in stacked array.
     Save all data to a np.ndarray, as well as a separate dict entry
     for time-evolution of some field (e.g. temperature)
 
@@ -144,66 +154,34 @@ def read_data(
     num_pts_list : list
         list of ints representing size of each block, used for indexing
         when all blocks combined to one array
-    mesh_base : vedo.Mesh
-        vedo mesh object containing fields to model in pointdata["fieldname"]
-        also contains connectivity etc.
     field_snapshot_dict : dict
         contains a dict entry for each sample. Each dict entry is a np.ndarray
-        with time vs pointdata values
-    block_id_list : list
-        list of ints with IDs for each block read
+        with time vs point_data values
     """
     field_snapshot_dict = dict.fromkeys(sample_names)
     dataset = []
     time_dict = dict.fromkeys(sample_names)
 
     num_steps = 0 # all sims should have same number of steps at this point
+    fname_per_sample = []
     for s, sample in enumerate(sample_names):
-        fname_list = glob(name_template(basedir, sample, "*", "*"))
-        time_id_list = np.unique(
-            [int(f.split("_")[-3]) for f in fname_list]
-        ).tolist()
-        block_id_list = np.unique(
-            [int(f.split("_")[-2]) for f in fname_list]
-        ).tolist()
-        time_id_list.sort()
-        fname_list = sorted(
-            fname_list, key=lambda x: int(x.split("/")[-2].split("_")[-1])
-        )
-        # remove first timestep (initial cond), since variance = 0
-        if nozero:
-            time_id_list.pop(0)
-            fname_list.pop(0)
-        if s == 0:
-            num_steps = len(time_id_list)
-        else:
-            assert len(time_id_list) == num_steps, f"expected {num_steps}, found {len(time_id_list)} for sample {sample}"
-        block_id_list.sort()
+        print("loading", sample)
         field_snapshot_dict[sample] = []
         time_name = f"{basedir}/{sample}/{csvname}"
         time_dict[sample] = read_moose_csv(time_name, nozero)
-        print("loading", sample)
+        fname_per_sample.append(name_template_exodus(basedir, sample, exodus_name))
 
-        for i, time_t in enumerate(time_id_list):
-            t0 = time()
-            field_data_t, _ = load_all_blocks([basedir, sample, time_t], block_id_list, fieldname)
-            field_snapshot_dict[sample].append(field_data_t)
-            dataset.append(field_data_t)
-        field_snapshot_dict[sample] = np.array(field_snapshot_dict[sample])
-    # just take the last instance of `mesh`
-    # get mesh base
-    mesh_list = []
-    _, mesh_list = load_all_blocks([basedir, sample, time_id_list[0]], block_id_list, fieldname, keepmesh=True)
+    ex_reader = ExodusReader(fieldname, nozero=nozero, to_array=True, to_dict=True)
+    dataset = ex_reader.read_all_samples(fname_per_sample, sample_names)
+    print(dataset.shape)
+    field_snapshot_dict = ex_reader.out_dict
 
-    dataset = np.array(dataset)
+    dataset = np.array(dataset).reshape(-1, ex_reader.num_mesh_points)
     return (
         dataset,
-        mesh_list,
         field_snapshot_dict,
-        block_id_list,
         time_dict,
     )
-
 
 def setup_pod_model(dataset):
     """
@@ -303,41 +281,6 @@ def get_dataset_coefs(
 
     return dataset_coefs_pertime
 
-def get_list_of_time_data(data_dict, col=0):
-    """
-    Helps rearrange data for post-processing
-
-    Parameters
-    ----------
-    data_dict : dict
-        dictionary with keys for each sample. Contained is an array or list for each timestep
-
-    Returns
-    -------
-        data_list : list of lists
-    """
-    data_list = []
-    for sample_i in data_dict.keys():
-        sample_data = data_dict[sample_i]
-        if sample_data.ndim == 2:
-            sample_data = sample_data[:, col]
-        n_steps = len(sample_data)
-        break
-
-    # create empty list of lists. Ordering is: list[time][samples]
-    data_list = [None] * n_steps
-    for t in range(n_steps):
-        data_list[t] = [None] * len(data_dict.keys())
-    for i, sample_i in enumerate(data_dict.keys()):
-        sample_data = data_dict[sample_i]
-        if sample_data.ndim == 2:
-            sample_data = sample_data[:, col]
-        for t in range(n_steps):
-            data_list[t][i] = copy(sample_data[t])
-
-    return data_list
-
-
 if __name__ == "__main__":
     args = get_inputs()
 
@@ -352,20 +295,16 @@ if __name__ == "__main__":
     sample_names = [s.split("/")[-1] for s in sample_names[: args.num_samples]]
     NUM_MODES = args.num_modes
 
-    # read all vtk files. We have several samples, each sample has several timesteps
-    # and each timestep may have several blocks (each with its own vtk file)
+    # read all exodus files.
     # dataset is a np.ndarray of all data
-    # mesh_base is a vedo/vtk object containing mesh data
     # field_snapshot_dict has a dict entry for each sample. Each entry contains np.ndarray of time vs field data
-    # block_id_list is a list of ints, with the IDs for each VTK block in the mesh
     (
         dataset,
-        mesh_base,
         field_snapshot_dict,
-        block_id_list,
         time_dict,
     ) = read_data(
         sample_names, 
+        exodus_name=args.exodus_name,
         fieldname=args.fieldname, 
         csvname=args.csvname, 
         basedir=args.path_to_samples,
