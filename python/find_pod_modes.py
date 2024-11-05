@@ -65,7 +65,7 @@ def get_inputs():
     )
     return parser.parse_args()
 
-def name_template(basedir, sample, time, block):
+def name_template_vtk(basedir, sample, time, block):
     """
     Returns string needed to read VTK data used for training
     """
