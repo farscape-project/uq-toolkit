@@ -16,6 +16,12 @@ import xgboost as xgb
 def get_inputs():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
+        "--path-to-samples",
+        default=".",
+        type=str,
+        help="/path/to/samples basedir",
+    )
+    parser.add_argument(
         "--uq-config",
         "-c",
         default="config.jsonc", 
@@ -49,7 +55,7 @@ def get_inputs():
     )
     return parser.parse_args()
 
-def find_uqlog_names(uq_config):
+def find_uqlog_names(uq_config, results_dir="."):
     """
     Find names of log json files for each app's uncertainties
     This is given in the uq_log config file
@@ -70,7 +76,7 @@ def find_uqlog_names(uq_config):
     # hjson uses ordered dicts, so ordering is consistent every time
     for key_i in uq_config["apps"]:
         uq_log_fname = f'{uq_config["apps"][key_i]["uq_log_name"]}.json'
-        with open(uq_log_fname, "r") as f:
+        with open(f"{results_dir}/{uq_log_fname}", "r") as f:
             app_log = json.load(f)
         app_log_list.append(app_log)
     
@@ -110,7 +116,7 @@ if __name__ == "__main__":
     with open(args.uq_config) as f:
         uq_config = json.load(f)
 
-    app_log_list = find_uqlog_names(uq_config)
+    app_log_list = find_uqlog_names(uq_config, results_dir=args.path_to_samples)
     app_key_name_list = find_uqparam_names(app_log_list, "sample0")
 
     dataset_coefs_pertime = dict.fromkeys(sample_names)

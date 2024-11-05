@@ -291,7 +291,9 @@ if __name__ == "__main__":
     POD_DIR = "pod_data/"
     makedirs(POD_DIR, exist_ok=True)
 
-    sample_names = glob(f"{args.path_to_samples}/sample*")
+    path_to_search = f"{args.path_to_samples}/sample*"
+    sample_names = glob(path_to_search)
+    assert len(sample_names) > 0, f"no samples in path {path_to_search}"
     sample_names = [s.split("/")[-1] for s in sample_names[: args.num_samples]]
     NUM_MODES = args.num_modes
 
