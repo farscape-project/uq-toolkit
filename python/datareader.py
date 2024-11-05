@@ -62,7 +62,7 @@ class ExodusReader:
         mesh = meshio.read(fname)
         # Dict may be un-ordered
         glob_dict = GlobDict(mesh.point_data)
-        field_data_all_t = glob_dict.glob_to_dict(f"{self.fieldname}*", self.nozero)
+        field_data_all_t = glob_dict.glob_to_dict(f"{self.fieldname}_time*", self.nozero)
         # now we sort the list order
         field_data_all_t_sorted = self.sort_steps(field_data_all_t)
         self.num_mesh_points = len(field_data_all_t_sorted[-1])

@@ -173,7 +173,7 @@ def read_data(
 
     ex_reader = ExodusReader(fieldname, nozero=nozero, to_array=True, to_dict=True)
     dataset = ex_reader.read_all_samples(fname_per_sample, sample_names)
-    print(dataset.shape)
+    print("dataset shape is:", dataset.shape)
     field_snapshot_dict = ex_reader.out_dict
 
     dataset = np.array(dataset).reshape(-1, ex_reader.num_mesh_points)
