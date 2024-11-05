@@ -128,7 +128,10 @@ if __name__ == "__main__":
 
             for app_log, key_list in zip(app_log_list, app_key_name_list):
                 for key in key_list:
-                    x_i.append(app_log[sample_i][key])
+                    if isinstance(app_log[sample_i][key], list):
+                        x_i.extend(app_log[sample_i][key])
+                    else:
+                        x_i.append(app_log[sample_i][key])
             x.append(x_i)
             y_i = dataset_coefs_pertime[sample_i][t_index]
             y.append(y_i)
