@@ -303,7 +303,7 @@
 []
   
 [Outputs]
-  exodus = false
+  exodus = true
   csv = true
 []
 
