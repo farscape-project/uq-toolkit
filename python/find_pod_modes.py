@@ -322,9 +322,9 @@ if __name__ == "__main__":
     # save POD weights
     np.savez(
         f"{POD_DIR}/pod_weights.npz",
-        mean=mean_dataset_columnvector,
-        pca_components=pca_model_components,
-        pca_std=sam_obj.std,
+        mean=mean_dataset_columnvector.astype("float32"),
+        pca_components=pca_model_components.astype("float32"),
+        pca_std=sam_obj.std.astype("float32"),
     )
     # compute and save POD coefficients
     # dataset_coefs_pertime is list of arrays for each sample. 
