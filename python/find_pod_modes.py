@@ -320,7 +320,13 @@ if __name__ == "__main__":
     ) = setup_pod_model(dataset)
     # save POD weights
     np.savez(
-        f"{POD_DIR}/pod_weights.npz",
+        f"{POD_DIR}/pod_weights_truncated.npz",
+        mean=mean_dataset_columnvector.astype("float32"),
+        pca_components=pca_model_components.astype("float32")[:args.num_modes],
+        pca_std=sam_obj.std.astype("float32")[:args.num_modes],
+    )
+    np.savez(
+        f"{POD_DIR}/pod_weights_full.npz",
         mean=mean_dataset_columnvector.astype("float32"),
         pca_components=pca_model_components.astype("float32"),
         pca_std=sam_obj.std.astype("float32"),
