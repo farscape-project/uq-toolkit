@@ -223,7 +223,7 @@ def get_dataset_coefs(
     sam_obj,
     mean_dataset_columnvector,
     pca_model_components,
-    NUM_MODES,
+    num_modes,
 ):
     """
     Find model parameters which best match each input sample with the POD model.
@@ -244,7 +244,7 @@ def get_dataset_coefs(
         mean shape of the training data in a 1D array.
     pca_model_components : array_like
         eigenvectors of covariance matrix, obtain by PCA.
-    NUM_MODES : int
+    num_modes : int
         number of modes to use in POD expansion.
 
     Returns
@@ -269,7 +269,7 @@ def get_dataset_coefs(
             params_i = sam_obj.fit_model_parameters(
                 snapshot_i - mean_dataset_columnvector,
                 pca_model_components,
-                num_modes=NUM_MODES,
+                num_modes=num_modes,
             )
             dataset_coefs_pertime[sample].append(params_i)
         # convert list to numpy array (faster to append to list than np array)
@@ -295,7 +295,6 @@ if __name__ == "__main__":
     sample_names = glob(path_to_search)
     assert len(sample_names) > 0, f"no samples in path {path_to_search}"
     sample_names = [s.split("/")[-1] for s in sample_names[: args.num_samples]]
-    NUM_MODES = args.num_modes
 
     # read all exodus files.
     # dataset is a np.ndarray of all data
