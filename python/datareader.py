@@ -4,6 +4,7 @@ Classes for reading various data types e.g. exodus, vtk
 from fnmatch import fnmatch
 import meshio
 import numpy as np
+from warnings import warn
 
 class GlobDict(dict):
     """
