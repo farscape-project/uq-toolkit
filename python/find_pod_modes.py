@@ -79,7 +79,12 @@ def name_template_exodus(basedir, sample, exodus_name):
 
 def read_moose_csv(fname, nozero=True):
     if "*" in fname:
-        fname = glob(fname)[0]
+        try:
+            fname = glob(fname)[0]
+        except IndexError:
+            print(f"could not read {fname}")
+            raise IndexError
+            
     csv_arr = np.loadtxt(
         fname, delimiter=",", usecols=[0], skiprows=1
     )
