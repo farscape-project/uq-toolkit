@@ -1,0 +1,12 @@
+{
+    "cubit-bin-path": "/home/ir-will17/rds/rds-ukaea-ap002-mOlK9qn0PlQ/ir-will17/coreform/bin",
+    "coil-volume-id": 1,
+    "target-volume-id": 2,
+    "coil-bottom-surface-id": 3,
+    "target-top-surface-id": 10,
+    "remesh": false,
+    "coil_target_offset_x" : -0.007,
+    "coil_target_offset_y" : 0.009,
+    "coil_target_offset_z" : 0.02,
+    "VacuumMesher-image" : "/home/ir-will17/rds/rds-ukaea-ap002-mOlK9qn0PlQ/ir-will17/vacuum_mesher_singularity/vacuummesh.sif",
+}
