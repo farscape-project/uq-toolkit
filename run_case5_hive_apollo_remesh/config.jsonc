@@ -1,0 +1,85 @@
+{
+    "apps":
+    {
+        "SS316LSTCComplexAFormEM.i":
+        {
+            "type":"moose",
+            "uncertain-params":
+            {
+                "Functions":
+                {
+                    "ss316l-rx" :
+                    {
+                        "type": "csv",
+                        "distribution": {"name":"uniform", "loc":0.9, "scale":0.2, "fraction":true},
+                        "scale_all":{},
+                    },
+                },
+                "Coefficients":
+                {
+                    "CurrentMagnitude":
+                    {
+                        "type": "value", // will parse "x" and "y" parameter from moose input
+                        "value_name":"value",
+                        "distribution": {"name":"uniform", "loc":900, "scale":200,  "fraction":false},
+                    }
+                }
+            },
+            "uq_log_name": "uq_log_aform",
+        },
+        "SS316LSTCThermal.i":
+        {
+            "type":"moose",
+            "uncertain-params":
+            {
+                "Functions":
+                {
+                    "water-htc-func" :
+                    {
+                        "type": "csv",
+                        "distribution": {"name":"uniform", "loc":0.9, "scale":0.2, "fraction":true},
+                        "scale_all":{},
+                    }
+                }
+            },
+            "uq_log_name": "uq_log_thermal",
+        },
+        "Meshing/mesh_config.jsonc":
+        {
+            "type": "json",
+            "uncertain-params":{
+                "coil_target_offset_x" :
+                {
+                    "type" : "value", // implies this is a scalar
+                    "distribution": {"name":"uniform", "loc":0.001, "scale":0.03, "fraction":false},
+                },
+                "coil_target_offset_y" :
+                {
+                    "type" : "value", // implies this is a scalar
+                    "distribution": {"name":"uniform", "loc":0.001, "scale":0.03, "fraction":false},
+                },
+                "coil_target_offset_z" :
+                {
+                    "type" : "value", // implies this is a scalar
+                    "distribution": {"name":"uniform", "loc":0.001, "scale":0.03, "fraction":false},
+                },
+            },
+            "uq_log_name": "uq_log_mesh",
+        }
+    },
+    "paths":
+    {
+        "workdir": "./",
+        "baseline_dir": "basedir",
+        "executable": "/opt/apollo/apollo-opt",
+    },
+    
+    "sampler" : "latinhypercube",
+    "num_samples" : 10,
+    "launcher" : "slurm",
+    "template_launcher_script":"runCase.sh",
+    
+    // parameters for run
+    "launcher_name" : "launcher.sh",
+}
+
