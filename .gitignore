@@ -10,6 +10,9 @@
 
 dev*
 
+# cubit files
+cubit*.jou
+
 # uq files
 sample*
 launcher.sh
@@ -18,6 +21,7 @@ pod_data
 vtk_data
 results
 *.bin
+runCase.sh
 
 clean.sh
 Allrun.sh
