@@ -4,6 +4,11 @@ import moosetree
 import pyhit
 import numpy as np
 
+def get_csv_delim(config):
+    try:
+        return config["delimiter"]
+    except KeyError:
+        return ","
 
 def parse_moose_to_param_dict(uq_config, path_config, moose_input):
     param_dict = {}
@@ -19,13 +24,18 @@ def parse_moose_to_param_dict(uq_config, path_config, moose_input):
                 uq_config[key_i][param_i]["distribution"]
             )
             if uq_config[key_i][param_i]["type"] == "csv":
+                # check what delimiter to use
+                csv_kwargs = {}
+                csv_kwargs["delimiter"] = get_csv_delim(uq_config[key_i][param_i])
+
+                csv_name = path.join(
+                    path_config["workdir"],
+                    path_config["baseline_dir"],
+                    param_moose["data_file"],
+                )
                 data = np.loadtxt(
-                    path.join(
-                        path_config["workdir"],
-                        path_config["baseline_dir"],
-                        param_moose["data_file"],
-                    ),
-                    delimiter=",",
+                    csv_name,
+                    **csv_kwargs
                 )
                 if param_moose["format"] == "columns":
                     x = data[:, 0]
@@ -82,9 +92,12 @@ def setup_new_moose_input(
 
             # setup new csv file
             if config[key_i][param_i]["type"] == "csv":
+                csv_kwargs = {}
+                csv_kwargs["delimiter"] = get_csv_delim(config[key_i][param_i])
+
                 data = np.loadtxt(
                     path.join(basedir_abs, param_moose["data_file"]),
-                    delimiter=",",
+                    **csv_kwargs
                 )
                 if param_moose["format"] == "columns":
                     x = data[:, 0]

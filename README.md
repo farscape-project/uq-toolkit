@@ -16,6 +16,11 @@ This repo is envisaged as being an interface mainly to MOOSE, but also must be a
 
 Currently we do not have anything installable. The library is used by `python /path/to/source/python/setup_uq_run.py`. In future, we will probably look to make this installable with `pip`, and can be used via the command line (or imported to an existing python tool?)
 
+Dependencies can be installed as:
+```bash
+pip install hjson UQpy numpy scipy
+```
+
 ### Examples overview
 
 We have provided a several examples to show how to set up a UQ run, for the kind of cases we are working on. The scope of these examples is as follows:

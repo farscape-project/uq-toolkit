@@ -39,10 +39,30 @@ def get_inputs():
         help="which json file to read?",
     )
     parser.add_argument(
+        "--basedir",
+        "-b",
+        default=None,
+        type=str,
+        help="baseline directory to make copy of (if not declared, uses json)",
+    )
+    parser.add_argument(
+        "--numsamples",
+        "-n",
+        default=None,
+        type=int,
+        help="baseline directory to make copy of (if not declared, uses json)",
+    )
+    parser.add_argument(
         "--copy-off",
         default=False,
         action="store_true",
         help="Do not copy dir",
+    )
+    parser.add_argument(
+        "--setup-launcher",
+        default=False,
+        action="store_true",
+        help="setup launcher (not needed if using nextflow)",
     )
     return parser.parse_args()
 
@@ -66,15 +86,22 @@ if __name__ == "__main__":
     args = get_inputs()
     with open(args.config, "r") as f:
         config = json.load(f)
+    # allow user to overwrite json file with command line arg
+    if args.numsamples is not None:
+        config["num_samples"] = args.numsamples
+    if args.basedir is not None:
+        config["paths"]["baseline_dir"] = args.basedir
+
     baselinedir_abs_path = os.path.join(
         config["paths"]["workdir"], config["paths"]["baseline_dir"]
     )
     # setup helper classes
-    launcher = UQLauncher(
-        config["launcher"],
-        config["template_launcher_script"],
-        launcher_dir=baselinedir_abs_path,
-    )
+    if args.setup_launcher:
+        launcher = UQLauncher(
+            config["launcher"],
+            config["template_launcher_script"],
+            launcher_dir=baselinedir_abs_path,
+        )
 
     # parser for reading MOOSE input files
     input_obj_list = []
@@ -166,8 +193,10 @@ if __name__ == "__main__":
                     app_i,
                     input_obj,
                 )
-        launcher.append_to_scheduler(new_dir)
-    launcher.write_launcher(f"launcher.sh")
+        if args.setup_launcher:
+            launcher.append_to_scheduler(new_dir, sample_string)
+    if args.setup_launcher:
+        launcher.write_launcher(f"launcher.sh")
     for app_i in app_name_list:
         uq_history[app_i].write_logger(
             f"{config['apps'][app_i]['uq_log_name']}.json"
