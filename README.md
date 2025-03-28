@@ -2,23 +2,59 @@
 
 This repo is envisaged as being an interface mainly to MOOSE, but also must be able to interface with other tools such as meshers for pre-processing. Potentially this could also work with other simulation software such as OpenFOAM (using PyFOAM for parsing).
 
-
-## TODO list
-- Post-processing of runs
-    - get PDFs, variance, conf intervals
-- surrogate modelling
-    - Can use [emukit](https://github.com/EmuKit/emukit), [GPy](https://github.com/SheffieldML/GPy)
-
-- generate initial sampling, then use GP surrogate to sample high spaces with high uncertainty
-
-## Usage
+## Getting started
 ### Installation
-
-Currently we do not have anything installable. The library is used by `python /path/to/source/python/setup_uq_run.py`. In future, we will probably look to make this installable with `pip`, and can be used via the command line (or imported to an existing python tool?)
-
 Dependencies can be installed as:
 ```bash
 pip install hjson UQpy numpy scipy
+```
+
+To use for modifying MOOSE input files, we require `pyhit` is available, which is installed with MOOSE. This can be located by following:
+```bash
+export PYTHONPATH=$MOOSE_DIR/python:$PYTHONPATH
+```
+
+### Usage 
+
+To set-up UQ jobs, we require a directory containing (1) a folder named `basedir` containing input files to be copied and modified, and (2) a config file (json format) with information on uncertain parameters. Several examples are provided, and explained in further detail below. In general, the config file has the following structure:
+
+```json
+{
+    "apps":
+    {
+        "cube_thermal_mechanical.i":
+        {
+            "type":"moose",
+            "uncertain-params":
+            {
+                // items to modify in the file `cube_thermal_mechanical.i`
+            },
+            "uq_log_name": "uq_log", // name of file used to archive the uncertain params
+        }
+    },
+    "paths":
+    {
+        // generally unchanged
+        "workdir":"./", 
+        "baseline_dir":"basedir",
+    },
+    "sampler" : "montecarlo", // currently supports "montecarlo" or "latinhypercube"
+    "num_samples" : 10, // can be overriden at command line
+    
+    // if not launched through the nextflow pipeline, a bash script can be used to launch all jobs on e.g. a SLURM cluster
+    "launcher_name" : "launcher.sh",
+    "launcher" : "bash", // supports "bash", "slurm" or "lsf"
+    "template_launcher_script":"runpar.sh", // refers to a script in the `paths/baseline_dir` that will launch the job
+}
+```
+
+To create a new number of cases which sample the uncertain PDFs, we run the following script:
+
+```bash
+python python/setup_uq_run.py \
+    -c run_case1_thermomechanicalcube/config_thermomech.jsonc \
+    -b run_case1_thermomechanicalcube/basedir \
+    -n 10
 ```
 
 ### Examples overview
