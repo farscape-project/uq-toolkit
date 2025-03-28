@@ -18,7 +18,7 @@ export PYTHONPATH=$MOOSE_DIR/python:$PYTHONPATH
 
 To set-up UQ jobs, we require a directory containing (1) a folder named `basedir` containing input files to be copied and modified, and (2) a config file (json format) with information on uncertain parameters. Several examples are provided, and explained in further detail below. In general, the config file has the following structure:
 
-```json
+```jsonc
 {
     "apps":
     {
