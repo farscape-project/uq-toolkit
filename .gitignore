@@ -18,12 +18,14 @@ pod_data
 vtk_data
 results
 *.bin
+*.skops
 
 clean.sh
 Allrun.sh
 
 # system files
 *.swp
+*.log
 uq_log.json
 launch.json
 __pycache__

@@ -1,0 +1,22 @@
+{
+    "GPR-params": 
+    {
+        "n_restarts_optimizer" : 10,
+    },
+    "kernels":
+    {
+        // by default, these will be added together
+        "RBF":{
+            "length_scale": [1, 1, 1, 1], 
+            "length_scale_bounds": [1e-4, 10]
+        }, 
+    },
+    "input-normalisations":
+    {
+        // if not here, input is kept as default
+        "time": 60.0,
+        "CurrentMagnitude": 1000.0
+    },
+    "model-file": "my_gpr.skops",
+    "kernel-combine": "plus"
+}

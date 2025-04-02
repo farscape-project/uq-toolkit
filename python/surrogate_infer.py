@@ -1,12 +1,30 @@
-"""Use POD and XGBoost to reconstruct a field"""
+"""Use POD and Sklearn-GaussianProcessRegression to reconstruct a field"""
 import numpy as np
 import pyssam
+from sklearn.gaussian_process import GaussianProcessRegressor as GPR
+from skops.io import dump, get_untrusted_types, load
 import xgboost as xgb
 
 class Reconstructor:
-  def __init__(self, xgb_fname, pod_coefs_fname):
-    self._load_xgb_regressor(xgb_fname)
+  def __init__(self, xgb_fname, pod_coefs_fname, model_type="gp"):
+    if model_type == "gp":
+        self._load_gp_regressor(xgb_fname)
+    else:
+        raise NotImplementedError(f"model_type={model_type} not supported")
     self._load_pyssam(pod_coefs_fname)
+
+  def _load_gp_regressor(self, gp_fname):
+    """ 
+    Read file with Gaussian process kernels etc.
+    Prerequisite is that `train_surrogate.py` has been run already.
+
+    Parameters
+    ----------
+    gp_fname : str
+        /path/to/gp_model.skops
+    """
+    unknown_types = get_untrusted_types(file=gp_fname)
+    self.surrogate_model = load(gp_fname, trusted=unknown_types)
 
   def _load_xgb_regressor(self, xgb_fname):
     """ 
@@ -42,7 +60,7 @@ class Reconstructor:
     self.pca_model_components = npzfile["pca_components"]
     self.sam_obj.std = npzfile["pca_std"]
 
-  def reconstruct_with_xgboost(
+  def reconstruct_with_gpr(
     self, t, param_list, reduction=None, num_modes=2
   ):
     """
@@ -68,8 +86,8 @@ class Reconstructor:
     recon_field : array_lie 
         Reconstructed field values (or, optionally reduced to scalar)
     """
-    feat_mat = xgb.DMatrix([[t, *param_list]])
-    pod_coefs = np.array(self.xgb_model.predict(feat_mat)).squeeze()
+    feat_mat = np.array([[t, *param_list]])
+    pod_coefs = np.array(self.surrogate_model.predict(feat_mat)).squeeze()
 
     # fix for when num_modes > pod_coefs
     num_modes = min(len(pod_coefs), num_modes)
