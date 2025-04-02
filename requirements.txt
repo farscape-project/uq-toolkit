@@ -1,0 +1,8 @@
+numpy==1.26
+UQpy
+hjson
+scipy
+scikit-learn
+vedo
+pyssam
+matplotlib
