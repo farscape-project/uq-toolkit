@@ -5,6 +5,8 @@ ENV PYTHONPATH=/opt/moose/share/moose/python
 ARG METHOD=opt
 ARG WORKDIR=/opt
 
+ARG UQKIT_BRANCH="add_ci"
+
 ARG NUM_CPUS=4
 ARG MOOSE_JOBS=4
 ENV PETSC_DIR=/opt/petsc
@@ -27,6 +29,7 @@ ENV PATH=${WASP_DIR}/bin:$PATH
 # install uq-toolkit
 RUN cd ${WORKDIR} && \
     git clone https://github.com/farscape-project/uq-toolkit.git && \
-    git checkout add_ci && \
-    pip install -r uq-toolkit/requirements.txt
+    cd uq-toolkit && \
+    git checkout ${UQKIT_BRANCH} && \
+    pip install -r requirements.txt
 
