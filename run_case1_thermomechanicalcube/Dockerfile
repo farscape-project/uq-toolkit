@@ -27,5 +27,6 @@ ENV PATH=${WASP_DIR}/bin:$PATH
 # install uq-toolkit
 RUN cd ${WORKDIR} && \
     git clone https://github.com/farscape-project/uq-toolkit.git && \
+    git checkout add_ci && \
     pip install -r uq-toolkit/requirements.txt
 
