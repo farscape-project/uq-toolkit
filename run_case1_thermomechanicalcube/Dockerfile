@@ -6,6 +6,7 @@ ARG METHOD=opt
 ARG WORKDIR=/opt
 
 ARG NUM_CPUS=4
+ARG MOOSE_JOBS=4
 ENV PETSC_DIR=/opt/petsc
 ENV LIBMESH_DIR=/opt/libmesh
 ENV PATH=/opt/miniforge3/bin:$PATH 
@@ -19,9 +20,9 @@ RUN source /opt/rh/gcc-toolset-12/enable && \
     cd ${WORKDIR} && \
     git clone https://github.com/idaholab/moose.git && \
     cd moose/framework && \
-    make -j ${NUM_CPUS} && \
+    make -j "$NUM_CPUS" && \
     cd ../modules/combined && \
-    make -j ${NUM_CPUS}
+    make -j "$NUM_CPUS"
     
 # install uq-toolkit
 RUN cd ${WORKDIR} && \
