@@ -4,5 +4,4 @@ hjson
 scipy
 scikit-learn
 vedo
-pyssam
 matplotlib
