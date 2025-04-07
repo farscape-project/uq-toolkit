@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 import numpy as np
 from warnings import warn
-from scipy.stats import qmc
 from UQpy import distributions, sampling
 
 
@@ -76,81 +75,6 @@ def setup_sample_dict(distribution_dict):
                 distribution_name, *distribution_args
             )
 
-    return sample_dict
-
-
-def setup_spacefilling_sampler(
-    main_param_dict, main_distribution_dict, n_samples
-):
-    upper_bound = []
-    lower_bound = []
-    num_features = 0
-    for app_i in main_distribution_dict.keys():
-        distribution_dict = main_distribution_dict[app_i]
-        param_dict = main_param_dict[app_i]
-        # get distribution for uncertain param in each app.
-        # Assumes uniform distribution. Get lower and upper bounds for scaling LHS output
-        for key_i in distribution_dict.keys():
-            l_bound_frac = distribution_dict[key_i]["lower"]
-            u_bound_frac = distribution_dict[key_i]["upper"]
-            distribution_is_relative = distribution_dict[key_i]["fraction"]
-            """
-            distibution_is_relative, when upper and lower bounds are a fraction of the value
-            obtained in the input file 
-            e.g. lower = 0.9, upper = 1.1, param value is 100, distribution is U(90, 110).
-            """
-            param_value_orig = param_dict[key_i]
-            if distribution_is_relative:
-                l_bound = param_value_orig + (l_bound_frac - 1) * abs(
-                    param_value_orig
-                )
-                u_bound = param_value_orig + (u_bound_frac - 1) * abs(
-                    param_value_orig
-                )
-                if type(l_bound) == float:
-                    l_bound = [l_bound]
-                    u_bound = [u_bound]
-
-                lower_bound.extend(list(l_bound))
-                upper_bound.extend(list(u_bound))
-            else:
-                # raise NotImplementedError
-                lower_bound.append(distribution_dict[key_i]["lower"])
-                upper_bound.append(distribution_dict[key_i]["upper"])
-                assert type(param_value_orig) == float
-            # store number of features, for setting up LHC sampler
-            if type(param_value_orig) == float:
-                num_features += 1
-            else:
-                num_features += param_value_orig.size
-
-    # setup and draw samples from LHC
-    sampler = qmc.LatinHypercube(num_features)
-    sample = sampler.random(n_samples)
-    sample_scaled = qmc.scale(sample, lower_bound, upper_bound)
-
-    # now we must map the sampled data compute above to a class
-    col_ind = 0
-    sample_dict = dict.fromkeys(main_distribution_dict.keys())
-    for app_i in main_distribution_dict.keys():
-        distribution_dict = main_distribution_dict[app_i]
-        param_dict = main_param_dict[app_i]
-        sample_dict[app_i] = dict.fromkeys(distribution_dict.keys())
-        for key_i in distribution_dict.keys():
-            # find which column in sample_scaled corresponds to right dict entry
-            var_size = 1
-            if type(param_dict[key_i]) is np.ndarray:
-                var_size = param_dict[key_i].size
-            sample_scaled_column = sample_scaled[
-                :, col_ind : col_ind + var_size
-            ]
-            # next iteration, we sample the next column(s)
-            col_ind += var_size
-
-            # setup obj for sampling
-            sample_dict[app_i][key_i] = DatasetSampler(
-                data=sample_scaled_column
-            )
     return sample_dict
 
 
