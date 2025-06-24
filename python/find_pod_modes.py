@@ -192,7 +192,7 @@ def read_data(
         time_dict,
     )
 
-def setup_pod_model(dataset):
+def setup_pod_model(dataset, num_modes):
     """
     Use pyssam to setup statistical/POD model
 
@@ -201,6 +201,8 @@ def setup_pod_model(dataset):
     dataset : array_like
         2D array of data to model, where each row is one sample/timestep,
         and each column is a value from the field(s) sampled
+    num_modes : int
+        How many modes to print reduced cumulative variance.
 
     Returns
     -------
@@ -218,7 +220,8 @@ def setup_pod_model(dataset):
 
     print("components shape:", pca_model_components.shape)
 
-    print("cumsum:", np.cumsum(sam_obj.pca_object.explained_variance_ratio_))
+    print("cumsum [full]:", np.cumsum(sam_obj.pca_object.explained_variance_ratio_))
+    print("cumsum [reduced]:", np.cumsum(sam_obj.pca_object.explained_variance_ratio_)[:num_modes])
     return (
         mean_dataset_columnvector,
         pca_model_components,
@@ -325,7 +328,7 @@ if __name__ == "__main__":
         mean_dataset_columnvector,
         pca_model_components,
         sam_obj,
-    ) = setup_pod_model(dataset)
+    ) = setup_pod_model(dataset, args.num_modes)
     # save POD weights
     np.savez(
         f"{POD_DIR}/pod_weights_truncated.npz",
