@@ -27,9 +27,10 @@ class GlobDict(dict):
             return dict([(k,v) for k,v  in self.items() if fnmatch(k, match)])
 
 class ExodusReader:
-    def __init__(self, fieldname, nozero=True, to_array=True, to_dict=False):
+    def __init__(self, fieldname, nozero=True, to_array=True, to_dict=False, block_name="target"):
         self.fieldname = fieldname
         self.nozero = nozero
+        self.block_name = block_name
 
         self.num_samples = 0
         self.num_mesh_points = -1
@@ -50,6 +51,37 @@ class ExodusReader:
         out_data = [timestep_dict[k] for k in time_keys]
         return out_data
 
+    def _read_cell_data(self, mesh):
+        glob_dict = GlobDict(mesh.cell_data)
+        # Dict may be un-ordered
+        field_data_all_t = glob_dict.glob_to_dict(f"{self.fieldname}_time*", self.nozero)
+        # filter to chosen block
+        for b, block in enumerate(mesh.cells):
+            # assumes tag is list containing only block name
+            if block.tags[0] == self.block_name:
+                block_ind = b
+        self.points = np.mean(mesh.points[mesh.cells[block_ind].data], axis=1)
+        for key_i, data_i in field_data_all_t.items():
+            field_data_all_t[key_i] = data_i[block_ind]
+        assert len(field_data_all_t) > 0
+        return field_data_all_t
+
+    def _read_point_data(self, mesh):
+        glob_dict = GlobDict(mesh.point_data)
+        # Dict may be un-ordered
+        field_data_all_t = glob_dict.glob_to_dict(f"{self.fieldname}_time*", self.nozero)
+        # filter to chosen block
+        for b, block in enumerate(mesh.cells):
+            # assumes tag is list containing only block name
+            if block.tags[0] == self.block_name:
+                block_ind = b
+        points_to_show = np.unique(mesh.cells[block_ind].data)
+        self.points = mesh.points[points_to_show]
+        for key_i, data_i in field_data_all_t.items():
+            field_data_all_t[key_i] = data_i[points_to_show]
+        assert len(field_data_all_t) > 0
+        return field_data_all_t
+
     def read_fname(self, fname, return_mesh=False):
         # check for wildcard
         if "*" in fname:
@@ -61,9 +93,11 @@ class ExodusReader:
             else:
                 fname = fname_glob[0]
         mesh = meshio.read(fname)
-        # Dict may be un-ordered
-        glob_dict = GlobDict(mesh.point_data)
-        field_data_all_t = glob_dict.glob_to_dict(f"{self.fieldname}_time*", self.nozero)
+        # try except for point-data or cell-data
+        try:
+            field_data_all_t = self._read_cell_data(mesh)
+        except:
+            field_data_all_t = self._read_point_data(mesh)
         # now we sort the list order
         field_data_all_t_sorted = self.sort_steps(field_data_all_t)
         self.num_mesh_points = len(field_data_all_t_sorted[-1])
