@@ -113,7 +113,8 @@ class ExodusReader:
         return field_data_all_t
 
     def read_final_step(self, fname):
-        field_data = self.read_fname(fname)[-1]
+        # take final value from list, and make a list again (of size 1)
+        field_data = [self.read_fname(fname)[-1]]
         self.num_samples += 1
         self.num_steps[fname] = len(field_data)
         return field_data

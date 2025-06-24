@@ -52,16 +52,16 @@ def get_inputs():
         help="int containing num samples to read",
     )
     parser.add_argument(
-        "--debug",
-        default=False,
-        action="store_true",
-        help="show debug checks",
-    )
-    parser.add_argument(
         "--nozero",
         default=False,
         action="store_true",
         help="ignore 0th file",
+    )
+    parser.add_argument(
+        "--steady-state",
+        default=False,
+        action="store_true",
+        help="consider final timestep only",
     )
     return parser.parse_args()
 
@@ -82,8 +82,7 @@ def read_moose_csv(fname, nozero=True):
         try:
             fname = glob(fname)[0]
         except IndexError:
-            print(f"could not read {fname}")
-            raise IndexError
+            raise IndexError(f"could not read {fname}")
             
     csv_arr = np.loadtxt(
         fname, delimiter=",", usecols=[0], skiprows=1
@@ -135,7 +134,8 @@ def read_data(
     fieldname="temperature", 
     csvname="*_out.csv", 
     basedir=".", 
-    nozero=True
+    nozero=True,
+    steady_state=True
 ):
     """
     Loop over all sample names and read exodus files that contain 
@@ -173,15 +173,19 @@ def read_data(
         print("loading", sample)
         field_snapshot_dict[sample] = []
         time_name = f"{basedir}/{sample}/{csvname}"
-        time_dict[sample] = read_moose_csv(time_name, nozero)
+        if not steady_state:
+            time_dict[sample] = read_moose_csv(time_name, nozero)
         fname_per_sample.append(name_template_exodus(basedir, sample, exodus_name))
 
     ex_reader = ExodusReader(fieldname, nozero=nozero, to_array=True, to_dict=True)
-    dataset = ex_reader.read_all_samples(fname_per_sample, sample_names)
-    print("dataset shape is:", dataset.shape)
+    dataset = ex_reader.read_all_samples(fname_per_sample, sample_names, all_steps=(not steady_state))
     field_snapshot_dict = ex_reader.out_dict
 
-    dataset = np.array(dataset).reshape(-1, ex_reader.num_mesh_points)
+    if type(dataset) is list:
+        dataset = np.concatenate(dataset, axis=0)
+    else:
+        dataset = np.array(dataset).reshape(-1, ex_reader.num_mesh_points)
+    print("dataset shape is:", dataset.shape)
     return (
         dataset,
         field_snapshot_dict,
@@ -263,6 +267,7 @@ def get_dataset_coefs(
     dataset_mean_pertime = dict.fromkeys(sample_names)
     dataset_scale_pertime = dict.fromkeys(sample_names)
     for sample in sample_names:
+        print("computing coeffs", sample)
         dataset_mean_pertime[sample] = []
         dataset_scale_pertime[sample] = []
         dataset_coefs_pertime[sample] = []
@@ -289,17 +294,14 @@ def get_dataset_coefs(
 if __name__ == "__main__":
     args = get_inputs()
 
-    DEBUG = False
-    RESULTS_DIR = "results/"
-    makedirs(RESULTS_DIR, exist_ok=True)
+    RESULTS_DIR = f"{args.path_to_samples}/"
 
     POD_DIR = "pod_data/"
     makedirs(POD_DIR, exist_ok=True)
 
-    path_to_search = f"{args.path_to_samples}/sample*"
-    sample_names = glob(path_to_search)
-    assert len(sample_names) > 0, f"no samples in path {path_to_search}"
-    sample_names = [s.split("/")[-1] for s in sample_names[: args.num_samples]]
+    with open(f"{RESULTS_DIR}/complete_samples.txt", "r") as f:
+        file_lines = f.read()
+        sample_names = file_lines.strip().split("\n")
 
     # read all exodus files.
     # dataset is a np.ndarray of all data
@@ -314,7 +316,8 @@ if __name__ == "__main__":
         fieldname=args.fieldname, 
         csvname=args.csvname, 
         basedir=args.path_to_samples,
-        nozero=args.nozero
+        nozero=args.nozero,
+        steady_state=args.steady_state
     )
 
     # compute POD weights
@@ -352,11 +355,13 @@ if __name__ == "__main__":
         # format header for columns in txt file
         pod_coef_str = [f"c{c}" for c in range(args.num_modes)]
         pod_coef_str = " ".join(pod_coef_str)
-        np.savetxt(
-            f"{POD_DIR}/pod_coefs_{sample_i}.txt", 
-            np.c_[
+        header = f"{pod_coef_str}"
+        data_to_write = dataset_coefs_pertime[sample_i]
+        if not args.steady_state:
+            data_to_write = np.c_[
                 time_dict[sample_i],
-                dataset_coefs_pertime[sample_i]
-            ],
-            header=f"t {pod_coef_str}"
-        )
+                data_to_write
+            ]
+            header = "t " + header
+
+        np.savetxt(f"{POD_DIR}/pod_coefs_{sample_i}.txt", data_to_write, header=header)
