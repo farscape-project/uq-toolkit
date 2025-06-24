@@ -84,7 +84,7 @@ class ExodusReader:
         self.num_steps[fname] = len(field_data)
         return field_data
 
-    def read_all_samples(self, fname_list, dict_keys=None):
+    def read_all_samples(self, fname_list, dict_keys=None, all_steps=True):
         """
 
         Returns
@@ -95,7 +95,10 @@ class ExodusReader:
         """
         out_data = []
         for i, fname in enumerate(fname_list):
-            out_data.append(self.read_all_steps(fname))
+            if all_steps:
+                out_data.append(self.read_all_steps(fname))
+            else:
+                out_data.append(self.read_final_step(fname))
             # add data from this loop iter to new key in dict
             if self.to_dict:
                 self.out_dict[dict_keys[i]] = out_data[-1]
