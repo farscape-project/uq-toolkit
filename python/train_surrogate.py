@@ -213,6 +213,12 @@ def load_data_timedependent(sample_names, params, app_log_list, app_key_name_lis
                     else:
                         x_i.append(app_log[sample_i][key])
 
+                    for offset_param_name, offset_value in params[
+                        "input-offset"
+                    ].items():
+                        if offset_param_name in key:
+                            x_i[-1] = x_i[-1] - offset_value
+
                     for norm_param_name, norm_value in params[
                         "input-normalisations"
                     ].items():
@@ -240,6 +246,12 @@ def load_data_steady(sample_names, params, app_log_list, app_key_name_list, pod_
                     x_i.extend(app_log[sample_i][key])
                 else:
                     x_i.append(app_log[sample_i][key])
+
+                for offset_param_name, offset_value in params[
+                    "input-offset"
+                ].items():
+                    if offset_param_name in key:
+                        x_i[-1] = x_i[-1] - offset_value
 
                 for norm_param_name, norm_value in params[
                     "input-normalisations"
@@ -303,6 +315,11 @@ if __name__ == "__main__":
     y_train = y[:split_size]
     x_test = x[split_size:]
     y_test = y[split_size:]
+    # add different statistics to log file
+    logger.info(f"input feature names values {app_key_name_list}")
+    for feature in ["min", "max", "mean", "std"]:
+        func_to_check = getattr(np, feature)
+        logger.info(f"input feature {feature} values {func_to_check(x_train, axis=0)}")
 
     gpr, score_train, score_test = sklearn_gpr(x_train, y_train, x_test, y_test, params)
 
