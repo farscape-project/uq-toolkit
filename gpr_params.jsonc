@@ -7,9 +7,9 @@
     {
         // by default, these will be added together
         "RBF":{
-            "length_scale": [1, 1, 1, 1], 
+            "length_scale": [1], 
             "length_scale_bounds": [1e-4, 10]
-        }, 
+        },
     },
     "input-normalisations":
     {
@@ -18,5 +18,6 @@
         "CurrentMagnitude": 1000.0
     },
     "model-file": "my_gpr.skops",
-    "kernel-combine": "plus"
+    "kernel-combine": "plus",
+    "anisotropic-kernel": true
 }

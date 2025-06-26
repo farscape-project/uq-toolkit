@@ -122,6 +122,9 @@ def sklearn_gpr(x_train, y_train, x_test, y_test, hyperparams):
     # set-up kernels based on information in the json file
     kernel = None
     for i, (name, props) in enumerate(hyperparams["kernels"].items()):
+        if name == "RBF":
+            if hyperparams["anisotropic-kernel"] and len(props["length_scale"]) == 1:
+                props["length_scale"] = props["length_scale"]*x_train.shape[1]
         if kernel is None:
             kernel = getattr(kernels, name)(**props)
         else:
