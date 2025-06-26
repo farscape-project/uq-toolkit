@@ -315,6 +315,7 @@ if __name__ == "__main__":
     y_train = y[:split_size]
     x_test = x[split_size:]
     y_test = y[split_size:]
+    num_out_features = y.shape[1]
     # add different statistics to log file
     logger.info(f"input feature names values {app_key_name_list}")
     for feature in ["min", "max", "mean", "std"]:
@@ -331,33 +332,37 @@ if __name__ == "__main__":
     y_pred_train_all_std = []
     for x_train_i, y_train_i in zip(x_train, y_train):
         y_pred, y_std = gpr.predict(x_train_i.reshape(1, -1), return_std=True)
-        y_pred_train_all.append(y_pred)
-        y_pred_train_all_std.append(y_std)
+        y_pred_train_all.append(y_pred.reshape(-1, num_out_features))
+        y_pred_train_all_std.append(y_std.reshape(-1, num_out_features))
 
     y_pred_test_all = []
     y_pred_test_all_std = []
     for x_test_i, y_test_i in zip(x_test, y_test):
         y_pred, y_std = gpr.predict(x_test_i.reshape(1, -1), return_std=True)
-        y_pred_test_all.append(y_pred)
-        y_pred_test_all_std.append(y_std)
+        y_pred_test_all.append(y_pred.reshape(-1, num_out_features))
+        y_pred_test_all_std.append(y_std.reshape(-1, num_out_features))
 
-    y_pred_train_all_std = np.array(y_pred_train_all_std)
-    y_pred_test_all_std = np.array(y_pred_test_all_std)
-    print(f"train {score_train}, test {score_test}")
+    # shape is [N_sample, 1, N_features], so we slice axis=1 
+    y_pred_train_all = np.array(y_pred_train_all)[:,0]
+    y_pred_test_all = np.array(y_pred_test_all)[:,0]
+    y_pred_train_all_std = np.array(y_pred_train_all_std)[:,0]
+    y_pred_test_all_std = np.array(y_pred_test_all_std)[:,0]
 
     errbar_kwargs = dict(ls="none", alpha=0.2)
 
-    fig, ax = plt.subplots(ncols=2, sharey=True)
-    ax[0].set_title(fr"Train ($R^2={score_train:4f}$)")
-    ax[0].scatter(y_train, np.squeeze(y_pred_train_all), c="blue", s=10)
-    ax[0].errorbar(y_train, np.squeeze(y_pred_train_all), yerr=np.squeeze(y_pred_train_all_std)*2, **errbar_kwargs)
-    ax[0].scatter(y_train, y_train, c="black", s=1)
-    ax[0].set_ylabel("predicted")
-    ax[0].set_xlabel("true")
-    ax[1].set_xlabel("true")
-    ax[1].set_title(fr"Test ($R^2={score_test:4f}$)")
-    ax[1].scatter(y_test, np.squeeze(y_pred_test_all), c="blue", s=10)
-    ax[1].errorbar(y_test, np.squeeze(y_pred_test_all), yerr=np.squeeze(y_pred_test_all_std)*2, c="blue", **errbar_kwargs)
-    ax[1].scatter(y_test, y_test, c="black", s=1)
-    plt.savefig(f"{args.path_to_samples}/plots/gpr-results.png", dpi=300)
+    for i in range(y_train.shape[1]):
+        plt.close("all")
+        fig, ax = plt.subplots(ncols=2, sharey=True)
+        ax[0].set_title(fr"Train ($R^2={score_train:4f}$)")
+        ax[0].scatter(y_train[:,i], y_pred_train_all[:,i], c="blue", s=10)
+        ax[0].errorbar(y_train[:,i], y_pred_train_all[:,i], yerr=y_pred_train_all_std[:,i]*2, **errbar_kwargs)
+        ax[0].scatter(y_train[:,i], y_train[:,i], c="black", s=1)
+        ax[0].set_ylabel("predicted")
+        ax[0].set_xlabel("true")
+        ax[1].set_xlabel("true")
+        ax[1].set_title(fr"Test ($R^2={score_test:4f}$)")
+        ax[1].scatter(y_test[:,i], y_pred_test_all[:,i], c="blue", s=10)
+        ax[1].errorbar(y_test[:,i], y_pred_test_all[:,i], yerr=y_pred_test_all_std[:,i]*2, c="blue", **errbar_kwargs)
+        ax[1].scatter(y_test[:,i], y_test[:,i], c="black", s=1)
+        plt.savefig(f"{args.path_to_samples}/plots/gpr-results-{i}.png", dpi=300)
 
