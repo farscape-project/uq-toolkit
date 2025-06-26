@@ -125,6 +125,19 @@ def find_uqparam_names(log_list, sample):
             key_name_list[i].append(key)
     return key_name_list
 
+def duplicate_kernels(kernel, num_duplicates=1):
+    kernel_out = kernel
+    for i in range(num_duplicates-1):
+        kernel_out = combine_kernels(kernel_out, kernel)
+    return kernel_out        
+
+def combine_kernels(kernel_orig, kernel_to_add, combine_method="add"):
+    if combine_method == "add":
+        out_kernel = kernel_orig + kernel_to_add
+    else:
+        out_kernel = kernel_orig * kernel_to_add
+    return out_kernel
+
 
 def sklearn_gpr(x_train, y_train, x_test, y_test, hyperparams):
     # set-up kernels based on information in the json file
@@ -133,13 +146,20 @@ def sklearn_gpr(x_train, y_train, x_test, y_test, hyperparams):
         if name == "RBF":
             if hyperparams["anisotropic-kernel"] and len(props["length_scale"]) == 1:
                 props["length_scale"] = props["length_scale"]*x_train.shape[1]
-        if kernel is None:
+        if i == 0:
             kernel = getattr(kernels, name)(**props)
+            try:
+                kernel = duplicate_kernels(kernel, hyperparams["num-kernels"][name])
+            except KeyError:
+                pass
         else:
-            if hyperparams["kernel-combine"] in ["add", "plus"]:
-                kernel = kernel + getattr(kernels, name)(**props)
-            else:
-                kernel = kernel * getattr(kernels, name)(**props)
+            kernel_i = getattr(kernels, name)(**props)
+            try:
+                kernel_i = duplicate_kernels(kernel_i, hyperparams["num-kernels"][name])
+            except KeyError:
+                pass
+            kernel = combine_kernels(kernel, getattr(kernels, name)(**props), hyperparams["kernel-combine"])
+
 
     # use skops to save/load gpr model in a safe way
     model_found = False
