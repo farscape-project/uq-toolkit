@@ -19,6 +19,12 @@ def get_inputs():
         help="/path/to/samples",
     )
     parser.add_argument(
+        "--outdir", "-o",
+        default=None,
+        type=str,
+        help="output directory name, default is /path/to/samples/pod_data",
+    )
+    parser.add_argument(
         "--fieldname",
         default="temperature",
         type=str,
@@ -299,7 +305,10 @@ if __name__ == "__main__":
 
     RESULTS_DIR = f"{args.path_to_samples}/"
 
-    POD_DIR = f"{RESULTS_DIR}/pod_data/"
+    if args.outdir is None:
+        POD_DIR = f"{RESULTS_DIR}/pod_data/"
+    else:
+        POD_DIR = args.outdir
     makedirs(POD_DIR, exist_ok=True)
 
     with open(f"{RESULTS_DIR}/complete_samples.txt", "r") as f:
