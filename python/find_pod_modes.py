@@ -299,7 +299,7 @@ if __name__ == "__main__":
 
     RESULTS_DIR = f"{args.path_to_samples}/"
 
-    POD_DIR = "pod_data/"
+    POD_DIR = f"{RESULTS_DIR}/pod_data/"
     makedirs(POD_DIR, exist_ok=True)
 
     with open(f"{RESULTS_DIR}/complete_samples.txt", "r") as f:
