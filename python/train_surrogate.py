@@ -9,6 +9,7 @@ from os import makedirs
 from os.path import isfile
 
 import hjson as json
+import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.gaussian_process import GaussianProcessRegressor as GPR
 from sklearn.gaussian_process import kernels
@@ -285,4 +286,41 @@ if __name__ == "__main__":
 
     gpr, score_train, score_test = sklearn_gpr(x_train, y_train, x_test, y_test, params)
 
-    logger.info(f"scores: train {score_train:5f}, test {score_test:5f}")
+    final_result = f"scores: train {score_train:5f}, test {score_test:5f}"
+    print(final_result)
+    logger.info(final_result)
+
+    y_pred_train_all = []
+    y_pred_train_all_std = []
+    for x_train_i, y_train_i in zip(x_train, y_train):
+        y_pred, y_std = gpr.predict(x_train_i.reshape(1, -1), return_std=True)
+        y_pred_train_all.append(y_pred)
+        y_pred_train_all_std.append(y_std)
+
+    y_pred_test_all = []
+    y_pred_test_all_std = []
+    for x_test_i, y_test_i in zip(x_test, y_test):
+        y_pred, y_std = gpr.predict(x_test_i.reshape(1, -1), return_std=True)
+        y_pred_test_all.append(y_pred)
+        y_pred_test_all_std.append(y_std)
+
+    y_pred_train_all_std = np.array(y_pred_train_all_std)
+    y_pred_test_all_std = np.array(y_pred_test_all_std)
+    print(f"train {score_train}, test {score_test}")
+
+    errbar_kwargs = dict(ls="none", alpha=0.2)
+
+    fig, ax = plt.subplots(ncols=2, sharey=True)
+    ax[0].set_title(fr"Train ($R^2={score_train:4f}$)")
+    ax[0].scatter(y_train, np.squeeze(y_pred_train_all), c="blue", s=10)
+    ax[0].errorbar(y_train, np.squeeze(y_pred_train_all), yerr=np.squeeze(y_pred_train_all_std)*2, **errbar_kwargs)
+    ax[0].scatter(y_train, y_train, c="black", s=1)
+    ax[0].set_ylabel("predicted")
+    ax[0].set_xlabel("true")
+    ax[1].set_xlabel("true")
+    ax[1].set_title(fr"Test ($R^2={score_test:4f}$)")
+    ax[1].scatter(y_test, np.squeeze(y_pred_test_all), c="blue", s=10)
+    ax[1].errorbar(y_test, np.squeeze(y_pred_test_all), yerr=np.squeeze(y_pred_test_all_std)*2, c="blue", **errbar_kwargs)
+    ax[1].scatter(y_test, y_test, c="black", s=1)
+    plt.savefig(f"{args.path_to_samples}/plots/gpr-results.png", dpi=300)
+
