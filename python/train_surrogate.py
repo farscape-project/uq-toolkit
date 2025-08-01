@@ -173,8 +173,6 @@ def sklearn_gpr(x_train, y_train, x_test, y_test, hyperparams):
     # if no model available, or --load-model not provided, then we fit the GPR
     if not model_found:
         gpr = GPR(kernel=kernel, **hyperparams["GPR-params"]).fit(x_train, y_train)
-        if "model-file" in hyperparams.keys() and args.save_model:
-            dump(gpr, hyperparams["model-file"])
     
     # log the outputs
     score_train = gpr.score(x_train, y_train)
@@ -323,6 +321,8 @@ if __name__ == "__main__":
         logger.info(f"input feature {feature} values {func_to_check(x_train, axis=0)}")
 
     gpr, score_train, score_test = sklearn_gpr(x_train, y_train, x_test, y_test, params)
+    if "model-file" in params.keys() and args.save_model:
+        dump(gpr, f'{POD_DIR}/{params["model-file"]}')
 
     final_result = f"scores: train {score_train:5f}, test {score_test:5f}"
     print(final_result)
