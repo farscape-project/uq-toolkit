@@ -67,17 +67,14 @@ class Reconstructor:
     self.sam_obj.std = npzfile["pca_std"]
 
   def reconstruct_with_gpr(
-    self, t, param_list, reduction=None, num_modes=2
+    self, param_list, reduction=np.max, num_modes=2
   ):
     """
     Reconstruct a field using POD pre-defined modes, and mode coefficients
     determined by an xgboost-regression model.
-    The mode coefficients are based on time, t, and some parameters.
 
     Parameters
     ----------
-    t : float
-        physical time value to reconstruct
     param_list : list
         parameters needed for doing inference on the xgboost model
         ordering must be same as defined during training.
@@ -98,13 +95,54 @@ class Reconstructor:
 
     # fix for when num_modes > pod_coefs
     num_modes = min(len(pod_coefs), num_modes)
+    with warnings.catch_warnings():
+      warnings.simplefilter("ignore")
+      recon_field = self.sam_obj.morph_model(
+        self.mean_dataset_columnvector,
+        self.pca_model_components,
+        pod_coefs[:num_modes],
+        num_modes=num_modes,
+      )
 
-    recon_field = self.sam_obj.morph_model(
-      self.mean_dataset_columnvector,
-      self.pca_model_components,
-      pod_coefs[:num_modes],
-      num_modes=num_modes,
-    )
+    if reduction is not None:
+      return reduction(recon_field)
+    else:
+      return recon_field
+
+  def reconstruct_from_coefs(
+    self, pod_coefs, reduction=np.max, num_modes=2
+  ):
+    """
+    Reconstruct a field using POD pre-defined modes, and mode coefficients
+    determined by an xgboost-regression model.
+
+    Parameters
+    ----------
+    param_list : list
+        parameters needed for doing inference on the xgboost model
+        ordering must be same as defined during training.
+    reduction : function or None
+        optional operation to apply to data such as np.max, np.mean, when only 
+        a single value is needed
+    num_modes : int
+        number of POD modes to use in reconstruction
+    
+    Returns
+    -------
+    recon_field : array_lie 
+        Reconstructed field values (or, optionally reduced to scalar)
+    """
+    # fix for when num_modes > pod_coefs
+    num_modes = min(len(pod_coefs), num_modes)
+    with warnings.catch_warnings():
+      warnings.simplefilter("ignore")
+      recon_field = self.sam_obj.morph_model(
+        self.mean_dataset_columnvector,
+        self.pca_model_components,
+        pod_coefs[:num_modes],
+        num_modes=num_modes,
+      )
+
     if reduction is not None:
       return reduction(recon_field)
     else:
