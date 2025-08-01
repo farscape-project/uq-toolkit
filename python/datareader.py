@@ -75,6 +75,8 @@ class ExodusReader:
             # assumes tag is list containing only block name
             if block.tags[0] == self.block_name:
                 block_ind = b
+
+        # self.cells = [(mesh.cells[block_ind].type, mesh.cells[block_ind].data - mesh.cells[block_ind].data.min())]
         points_to_show = np.unique(mesh.cells[block_ind].data)
         self.points = mesh.points[points_to_show]
         for key_i, data_i in field_data_all_t.items():
@@ -105,6 +107,95 @@ class ExodusReader:
             return field_data_all_t_sorted, mesh
         else:
             return field_data_all_t_sorted
+        
+    def add_block_id_field(self, mesh):
+        """
+        When writing to VTK, we add a scalar for block ID to allow 
+        filtering to a specific block in paraview.
+
+        Parameters
+        ----------
+        mesh (meshio.Mesh): Multiblock exodus mesh data
+
+        Returns
+        -------
+        mesh (meshio.Mesh): Multiblock exodus mesh with additional point_data field "block_id"
+        """
+        field_to_write = np.zeros(mesh.points.shape[0])
+        for b, block in enumerate(mesh.cells):
+            # assumes tag is list containing only block name
+            points_to_show = np.unique(block.data)
+            field_to_write[points_to_show] = b
+        
+        mesh.point_data["block_id"] = field_to_write
+        return mesh
+
+    def write_pointdata(self, mesh, field, name):
+        """
+        Create a new mesh.point_data field with an input numpy array. 
+        The field is zero on all other blocks.
+
+        Parameters
+        ----------
+        mesh (meshio.Mesh): Multiblock exodus mesh data
+        field (np.array): 1D array of scalar data to be represented at corresponding grid points.
+        name (str): Name for field to be looked-up in exodus.
+
+        Returns
+        -------
+        mesh (meshio.Mesh): mesh with new data appended as additional point_data field
+        """
+        field_to_write = np.zeros(mesh.points.shape[0])
+        for b, block in enumerate(mesh.cells):
+            # assumes tag is list containing only block name
+            if block.tags[0] == self.block_name:
+                block_ind = b
+        points_to_show = np.unique(mesh.cells[block_ind].data)
+        field_to_write[points_to_show] = field
+        mesh.point_data[name] = field_to_write
+        return mesh
+
+    def write_celldata(self, mesh, field, name):
+        """
+        Create a new mesh.cell_data field with an input numpy array. 
+        The field is zero on all other blocks.
+
+        Parameters
+        ----------
+        mesh (meshio.Mesh): Multiblock exodus mesh data
+        field (np.array): 1D array of scalar data to be represented at corresponding cells.
+        name (str): Name for field to be looked-up in exodus.
+
+        Returns
+        -------
+        mesh (meshio.Mesh): mesh with new data appended as additional cell_data field
+        """
+        field_to_write = np.zeros(mesh.points.shape[0])
+        for b, block in enumerate(mesh.cells):
+            # assumes tag is list containing only block name
+            if block.tags[0] == self.block_name:
+                block_ind = b
+        points_to_show = np.unique(mesh.cells[block_ind].data)
+        
+        field_to_write[points_to_show] = field
+        mesh.point_data[name] = field_to_write
+        return mesh
+
+    def clean_exodus_data(self, mesh):
+        """
+        Empty all existing point and cell data from mesh. Useful when many timesteps are saved but not needed (due to excessive memory).
+
+        Parameters
+        ----------
+        mesh (meshio.Mesh): Multiblock exodus mesh data
+
+        Returns
+        -------
+        mesh (meshio.Mesh): mesh with point and cell data emptied.
+        """
+        mesh.point_data = {}
+        mesh.cell_data = {}
+        return mesh
 
     def read_all_steps(self, fname):
         field_data_all_t = self.read_fname(fname)
