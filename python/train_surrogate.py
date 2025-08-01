@@ -364,5 +364,5 @@ if __name__ == "__main__":
         ax[1].scatter(y_test[:,i], y_pred_test_all[:,i], c="blue", s=10)
         ax[1].errorbar(y_test[:,i], y_pred_test_all[:,i], yerr=y_pred_test_all_std[:,i]*2, c="blue", **errbar_kwargs)
         ax[1].scatter(y_test[:,i], y_test[:,i], c="black", s=1)
-        plt.savefig(f"{args.path_to_samples}/plots/gpr-results-{i}.png", dpi=300)
+        plt.savefig(f"{args.path_to_samples}/plots/gpr-calibration-{i}.png", dpi=300)
 
