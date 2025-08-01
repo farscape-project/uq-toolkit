@@ -71,6 +71,12 @@ def get_inputs():
         action="store_true",
         help="data is not time-dependent",
     )
+    parser.add_argument(
+        "--pod-coef",
+        default=0,
+        type=int,
+        help="POD coeff to train",
+    )
     return parser.parse_args()
 
 
@@ -257,8 +263,7 @@ def load_data_steady(sample_names, params, app_log_list, app_key_name_list, pod_
                     if norm_param_name in key:
                         x_i[-1] = x_i[-1] / norm_value
         x.append(x_i)
-        y_i = [dataset_coefs_pertime[sample_i][1]]
-        # y_i = dataset_coefs_pertime[sample_i]
+        y_i = dataset_coefs_pertime[sample_i]
         y.append(y_i)
     return x, y
 
@@ -307,7 +312,7 @@ if __name__ == "__main__":
     TRAIN_FRACTION = 0.8
     x, y = shuffle(x, y)
     x = np.array(x)
-    y = np.array(y)
+    y = np.array(y)[:,args.pod_coef:args.pod_coef+1]
     split_size = int(np.ceil(TRAIN_FRACTION * x.shape[0]))
     x_train = x[:split_size]
     y_train = y[:split_size]
@@ -322,7 +327,7 @@ if __name__ == "__main__":
 
     gpr, score_train, score_test = sklearn_gpr(x_train, y_train, x_test, y_test, params)
     if "model-file" in params.keys() and args.save_model:
-        dump(gpr, f'{POD_DIR}/{params["model-file"]}')
+        dump(gpr, f'{POD_DIR}/my_gpr_podcoef{args.pod_coef}.skops')
 
     final_result = f"scores: train {score_train:5f}, test {score_test:5f}"
     print(final_result)
@@ -350,19 +355,19 @@ if __name__ == "__main__":
 
     errbar_kwargs = dict(ls="none", alpha=0.2)
 
-    for i in range(y_train.shape[1]):
-        plt.close("all")
-        fig, ax = plt.subplots(ncols=2, sharey=True)
-        ax[0].set_title(fr"Train ($R^2={score_train:4f}$)")
-        ax[0].scatter(y_train[:,i], y_pred_train_all[:,i], c="blue", s=10)
-        ax[0].errorbar(y_train[:,i], y_pred_train_all[:,i], yerr=y_pred_train_all_std[:,i]*2, **errbar_kwargs)
-        ax[0].scatter(y_train[:,i], y_train[:,i], c="black", s=1)
-        ax[0].set_ylabel("predicted")
-        ax[0].set_xlabel("true")
-        ax[1].set_xlabel("true")
-        ax[1].set_title(fr"Test ($R^2={score_test:4f}$)")
-        ax[1].scatter(y_test[:,i], y_pred_test_all[:,i], c="blue", s=10)
-        ax[1].errorbar(y_test[:,i], y_pred_test_all[:,i], yerr=y_pred_test_all_std[:,i]*2, c="blue", **errbar_kwargs)
-        ax[1].scatter(y_test[:,i], y_test[:,i], c="black", s=1)
-        plt.savefig(f"{args.path_to_samples}/plots/gpr-calibration-{i}.png", dpi=300)
+    plt.close("all")
+    i = 0
+    fig, ax = plt.subplots(ncols=2, sharey=True)
+    ax[0].set_title(fr"Train ($R^2={score_train:4f}$)")
+    ax[0].scatter(y_train[:,i], y_pred_train_all[:,i], c="blue", s=10)
+    ax[0].errorbar(y_train[:,i], y_pred_train_all[:,i], yerr=y_pred_train_all_std[:,i]*2, **errbar_kwargs)
+    ax[0].scatter(y_train[:,i], y_train[:,i], c="black", s=1)
+    ax[0].set_ylabel("predicted")
+    ax[0].set_xlabel("true")
+    ax[1].set_xlabel("true")
+    ax[1].set_title(fr"Test ($R^2={score_test:4f}$)")
+    ax[1].scatter(y_test[:,i], y_pred_test_all[:,i], c="blue", s=10)
+    ax[1].errorbar(y_test[:,i], y_pred_test_all[:,i], yerr=y_pred_test_all_std[:,i]*2, c="blue", **errbar_kwargs)
+    ax[1].scatter(y_test[:,i], y_test[:,i], c="black", s=1)
+    plt.savefig(f"{args.path_to_samples}/plots/gpr-calibration-{args.pod_coef}.png", dpi=300)
 
