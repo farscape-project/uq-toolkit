@@ -1,16 +1,22 @@
 """Use POD and Sklearn-GaussianProcessRegression to reconstruct a field"""
+import warnings
 import numpy as np
 import pyssam
 from sklearn.gaussian_process import GaussianProcessRegressor as GPR
 from skops.io import dump, get_untrusted_types, load
-import xgboost as xgb
+try:
+  import xgboost as xgb
+except:
+  warnings.warn("xgboost not available")
 
 class Reconstructor:
-  def __init__(self, xgb_fname, pod_coefs_fname, model_type="gp"):
+  def __init__(self, surrogate_fname=None, pod_coefs_fname=None, model_type="gp"):
     if model_type == "gp":
-        self._load_gp_regressor(xgb_fname)
+      self._load_gp_regressor(surrogate_fname)
+    elif model_type == None or model_type == "none":
+      pass
     else:
-        raise NotImplementedError(f"model_type={model_type} not supported")
+      raise NotImplementedError(f"model_type={model_type} not supported")
     self._load_pyssam(pod_coefs_fname)
 
   def _load_gp_regressor(self, gp_fname):
@@ -86,8 +92,9 @@ class Reconstructor:
     recon_field : array_lie 
         Reconstructed field values (or, optionally reduced to scalar)
     """
-    feat_mat = np.array([[t, *param_list]])
-    pod_coefs = np.array(self.surrogate_model.predict(feat_mat)).squeeze()
+    feat_mat = np.array([param_list])
+    pod_coefs = np.array(self.surrogate_model.predict(feat_mat)).reshape(-1)
+    pod_coefs_mean, pod_coefs_std  = self.surrogate_model.predict(feat_mat, return_std=True)
 
     # fix for when num_modes > pod_coefs
     num_modes = min(len(pod_coefs), num_modes)

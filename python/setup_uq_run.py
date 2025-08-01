@@ -15,18 +15,11 @@ except:
 import uq_sampler
 from launcher import UQLauncher
 from json_tools import parse_json_to_param_dict, setup_new_json_input
-from moose_tools import parse_moose_to_param_dict, setup_new_moose_input
+try:
+    from moose_tools import parse_moose_to_param_dict, setup_new_moose_input
+except:
+    warn("Current build not compatible with MOOSE")
 from uq_logger import UncertaintyLogger
-
-"""
-Steps: 
-1. read tabular data
-2. fit polynomials and save coefficients to object orientated structure
-3. send somewhere
-4. sample
-5. 
-
-"""
 
 
 def get_inputs():
