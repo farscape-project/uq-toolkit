@@ -344,12 +344,14 @@ if __name__ == "__main__":
         mean=mean_dataset_columnvector.astype("float32"),
         pca_components=pca_model_components.astype("float32")[:args.num_modes],
         pca_std=sam_obj.std.astype("float32")[:args.num_modes],
+        cumsum=sam_obj.pca_object.explained_variance_ratio_.astype("float32")[:args.num_modes]
     )
     np.savez(
         f"{POD_DIR}/pod_weights_full.npz",
         mean=mean_dataset_columnvector.astype("float32"),
         pca_components=pca_model_components.astype("float32"),
         pca_std=sam_obj.std.astype("float32"),
+        cumsum=sam_obj.pca_object.explained_variance_ratio_.astype("float32")
     )
     # compute and save POD coefficients
     # dataset_coefs_pertime is list of arrays for each sample. 
