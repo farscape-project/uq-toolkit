@@ -25,6 +25,13 @@ def get_inputs():
         help="output directory name, default is /path/to/samples/pod_data",
     )
     parser.add_argument(
+        "--reorder",
+        type=str,
+        default=False,
+        action="store_true",
+        help="For meshes with same topology but inconsistent ordering, apply reorder data with previously computed hashmaps",
+    )
+    parser.add_argument(
         "--fieldname",
         default="temperature",
         type=str,
@@ -141,7 +148,8 @@ def read_data(
     csvname="*_out.csv", 
     basedir=".", 
     nozero=True,
-    steady_state=True
+    steady_state=True,
+    reorder=False
 ):
     """
     Loop over all sample names and read exodus files that contain 
@@ -154,8 +162,20 @@ def read_data(
     sample_names : list
         list of strings containing sample names (corresponding to folders)
         containing data
+    exodus_name : string
+        string with name of exodus file to read from each directory.
+    csv_name : string
+        string with name of csv file to read from each directory (needed for time-dependent stuff).
     fieldname : string
         string to read values from in vedo/vtk object
+    basedir : string
+        string with /path/to/samples
+    nozero : bool
+        skip initial timestep
+    steady_state : bool
+        Only consider last timestep, and ignore time_dict
+    reorder : bool
+        Apply reordering to field data.
 
     Returns
     -------
@@ -175,6 +195,7 @@ def read_data(
 
     num_steps = 0 # all sims should have same number of steps at this point
     fname_per_sample = []
+    ordering_per_sample = []
     for s, sample in enumerate(sample_names):
         print("loading", sample)
         field_snapshot_dict[sample] = []
@@ -182,6 +203,8 @@ def read_data(
         if not steady_state:
             time_dict[sample] = read_moose_csv(time_name, nozero)
         fname_per_sample.append(name_template_exodus(basedir, sample, exodus_name))
+        if reorder:
+            ordering_per_sample.append(np.loadtxt(f"reorder_mapping/pointsmapping_{sample}.txt")[:,1].astype(int))
 
     ex_reader = ExodusReader(fieldname, nozero=nozero, to_array=True, to_dict=True)
     dataset = ex_reader.read_all_samples(fname_per_sample, sample_names, all_steps=(not steady_state))
@@ -192,11 +215,22 @@ def read_data(
     else:
         dataset = np.array(dataset).reshape(-1, ex_reader.num_mesh_points)
     print("dataset shape is:", dataset.shape)
+
+    if reorder:
+        ordering_per_sample = np.array(ordering_per_sample)
+        dataset, field_snapshot_dict = reorder_all_data(dataset, field_snapshot_dict, ordering_per_sample)
     return (
         dataset,
         field_snapshot_dict,
         time_dict,
     )
+
+def reorder_all_data(dataset_arr, dataset_dict, ordering_per_sample):
+    dataset_arr = np.array(list(map(lambda x, y: y[x], ordering_per_sample, dataset_arr)))
+    for i, key_i in enumerate(dataset_dict.keys()):
+        dataset_dict[key_i] = [a[ordering_per_sample[i]] for a in dataset_dict[key_i]]
+        
+    return dataset_arr, dataset_dict
 
 def setup_pod_model(dataset, num_modes):
     """
@@ -314,6 +348,8 @@ if __name__ == "__main__":
     with open(f"{RESULTS_DIR}/complete_samples.txt", "r") as f:
         file_lines = f.read()
         sample_names = file_lines.strip().split("\n")
+    
+    sample_names = sample_names[:args.num_samples]
 
     # read all exodus files.
     # dataset is a np.ndarray of all data
@@ -329,7 +365,8 @@ if __name__ == "__main__":
         csvname=args.csvname, 
         basedir=args.path_to_samples,
         nozero=args.nozero,
-        steady_state=args.steady_state
+        steady_state=args.steady_state,
+        reorder=args.reorder,
     )
 
     # compute POD weights
