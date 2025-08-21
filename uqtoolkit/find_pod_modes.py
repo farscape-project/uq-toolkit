@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 from warnings import warn
 from os import makedirs
 from time import time
+from tqdm import tqdm
 from datareader import ExodusReader
 
 def get_inputs():
@@ -26,7 +27,6 @@ def get_inputs():
     )
     parser.add_argument(
         "--reorder",
-        type=str,
         default=False,
         action="store_true",
         help="For meshes with same topology but inconsistent ordering, apply reorder data with previously computed hashmaps",
@@ -196,8 +196,7 @@ def read_data(
     num_steps = 0 # all sims should have same number of steps at this point
     fname_per_sample = []
     ordering_per_sample = []
-    for s, sample in enumerate(sample_names):
-        print("loading", sample)
+    for s, sample in tqdm(enumerate(sample_names)):
         field_snapshot_dict[sample] = []
         time_name = f"{basedir}/{sample}/{csvname}"
         if not steady_state:
