@@ -4,6 +4,7 @@ Classes for reading various data types e.g. exodus, vtk
 from fnmatch import fnmatch
 import meshio
 import numpy as np
+from tqdm import tqdm
 from warnings import warn
 
 class GlobDict(dict):
@@ -84,7 +85,7 @@ class ExodusReader:
         assert len(field_data_all_t) > 0
         return field_data_all_t
 
-    def read_fname(self, fname, return_mesh=False):
+    def read_fname(self, fname, return_mesh=False, all_steps=False, reorder_fname=None):
         # check for wildcard
         if "*" in fname:
             fname_glob = glob(fname)
@@ -101,12 +102,25 @@ class ExodusReader:
         except:
             field_data_all_t = self._read_point_data(mesh)
         # now we sort the list order
-        field_data_all_t_sorted = self.sort_steps(field_data_all_t)
-        self.num_mesh_points = len(field_data_all_t_sorted[-1])
-        if return_mesh:
-            return field_data_all_t_sorted, mesh
+        field_data = self.sort_steps(field_data_all_t)
+        self.num_mesh_points = len(field_data[-1])
+
+        if all_steps:
+            pass
         else:
-            return field_data_all_t_sorted
+            field_data = [field_data[-1]]
+        self.num_samples += 1
+        self.num_steps[fname] = len(field_data)
+        
+        # user may wish to reorder points to a consistent ordering
+        if reorder_fname is not None:
+            ordering_arr = np.loadtxt(reorder_fname)[:,1].astype(int)
+            field_data = [f[ordering_arr] for f in field_data]
+
+        if return_mesh:
+            return field_data, mesh
+        else:
+            return field_data
         
     def add_block_id_field(self, mesh):
         """
@@ -197,19 +211,6 @@ class ExodusReader:
         mesh.cell_data = {}
         return mesh
 
-    def read_all_steps(self, fname):
-        field_data_all_t = self.read_fname(fname)
-        self.num_samples += 1
-        self.num_steps[fname] = len(field_data_all_t)
-        return field_data_all_t
-
-    def read_final_step(self, fname):
-        # take final value from list, and make a list again (of size 1)
-        field_data = [self.read_fname(fname)[-1]]
-        self.num_samples += 1
-        self.num_steps[fname] = len(field_data)
-        return field_data
-
     def read_all_samples(self, fname_list, dict_keys=None, all_steps=True):
         """
 
@@ -220,11 +221,8 @@ class ExodusReader:
             otherwise returns nested list of same ordering
         """
         out_data = []
-        for i, fname in enumerate(fname_list):
-            if all_steps:
-                out_data.append(self.read_all_steps(fname))
-            else:
-                out_data.append(self.read_final_step(fname))
+        for i, fname in tqdm(enumerate(fname_list), desc="ExodusReader.read_all_samples"):
+            out_data.append(self.read_fname(fname, return_mesh=False, all_steps=all_steps))
             # add data from this loop iter to new key in dict
             if self.to_dict:
                 self.out_dict[dict_keys[i]] = out_data[-1]
