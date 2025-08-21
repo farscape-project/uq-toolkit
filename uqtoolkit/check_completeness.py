@@ -6,6 +6,7 @@ from glob import glob
 import numpy as np
 from warnings import warn
 from datareader import ExodusReader
+from sklearn.utils import shuffle
 
 def get_inputs():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -33,6 +34,20 @@ def get_inputs():
         default="*_out.e",
         type=str,
         help="string for exodus file",
+    )
+    parser.add_argument(
+        "--val-split",
+        "-split",
+        default=False,
+        type=float,
+        help="fraction of data to assign to split (unused by default)",
+    )
+    parser.add_argument(
+        "--random-seed",
+        "-seed",
+        default=None,
+        type=int,
+        help="Random seed to use for shuffling data",
     )
     return parser.parse_args()
 
@@ -84,7 +99,6 @@ def read_data(
 
     missing_sample_index_list = []
     for s, sample in enumerate(sample_names):
-        print("loading csv", sample)
         field_snapshot_dict[sample] = []
         time_name = f"{basedir}/{sample}/{csvname}"
         try:
@@ -98,15 +112,7 @@ def read_data(
     for del_ind in missing_sample_index_list[::-1]:
         sample_names.pop(del_ind)
 
-    ex_reader = ExodusReader(fieldname, nozero=nozero, to_array=True, to_dict=True)
-    for s, sample in enumerate(sample_names):
-        print("loading exodus", sample)
-        exodus_fname = name_template_exodus(basedir, sample, exodus_name)
-        ex_reader.read_fname(exodus_fname, return_mesh=False)
-
-    # write list of complete samples
-    with open(f"{basedir}/complete_samples.txt", "w") as f:
-        [f.write(f"{s}\n") for s in sample_names]
+    return sample_names
 
 
 if __name__ == "__main__":
@@ -121,10 +127,25 @@ if __name__ == "__main__":
     # read all exodus files.
     # dataset is a np.ndarray of all data
     # field_snapshot_dict has a dict entry for each sample. Each entry contains np.ndarray of time vs field data
-    read_data(
+    sample_names = read_data(
         sample_names, 
         exodus_name=args.exodus_name,
         fieldname=args.fieldname, 
         csvname=args.csvname, 
         basedir=args.path_to_samples,
     )
+    # optionally separate validation data for consistent validation set in entire workflow
+    if args.val_split:
+        assert (args.val_split > 0. and args.val_split < 1.), "val split must be 0<x<1"
+        sample_names = shuffle(sample_names, random_state=args.random_seed)
+        split_size = int(np.ceil((1-args.val_split) * len(sample_names)))
+        sample_names_val = sample_names[split_size:]
+        sample_names = sample_names[:split_size] # now contains training only
+
+        # write list of complete samples
+        with open(f"{args.path_to_samples}/complete_samples_val.txt", "w") as f:
+            [f.write(f"{s}\n") for s in sample_names_val]
+
+    # write list of complete samples
+    with open(f"{args.path_to_samples}/complete_samples.txt", "w") as f:
+        [f.write(f"{s}\n") for s in sample_names]
