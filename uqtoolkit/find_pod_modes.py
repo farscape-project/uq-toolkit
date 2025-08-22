@@ -9,27 +9,21 @@ from warnings import warn
 from os import makedirs
 from time import time
 from tqdm import tqdm
-from datareader import ExodusReader
+from uqtoolkit import ExodusReader, Reconstructor, SurrogateCLI
 
 def get_inputs():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--path-to-samples",
-        default=".",
-        type=str,
-        help="/path/to/samples",
-    )
-    parser.add_argument(
-        "--outdir", "-o",
-        default=None,
-        type=str,
-        help="output directory name, default is /path/to/samples/pod_data",
-    )
+    parser = SurrogateCLI(description=__doc__)
     parser.add_argument(
         "--reorder",
         default=False,
         action="store_true",
         help="For meshes with same topology but inconsistent ordering, apply reorder data with previously computed hashmaps",
+    )
+    parser.add_argument(
+        "--val",
+        default=False,
+        action="store_true",
+        help="Run validation instead of training",
     )
     parser.add_argument(
         "--fieldname",
@@ -58,13 +52,6 @@ def get_inputs():
         help="int containing num samples to read",
     )
     parser.add_argument(
-        "--num-modes",
-        "-m",
-        default=4,
-        type=int,
-        help="int containing num samples to read",
-    )
-    parser.add_argument(
         "--nozero",
         default=False,
         action="store_true",
@@ -77,12 +64,6 @@ def get_inputs():
         help="consider final timestep only",
     )
     return parser.parse_args()
-
-def name_template_vtk(basedir, sample, time, block):
-    """
-    Returns string needed to read VTK data used for training
-    """
-    return f"{basedir}/{sample}/vtk_data/{sample}/*/*_{time}_{block}_0.vtu"
 
 def name_template_exodus(basedir, sample, exodus_name):
     """
@@ -103,43 +84,6 @@ def read_moose_csv(fname, nozero=True):
     if nozero:
         csv_arr = csv_arr[1:]
     return csv_arr
-
-def load_all_blocks(fname_args, fieldname, exodus_name, keepmesh=False, nozero=True):
-    """
-    Loop over all blocks in geometry and stack field data as an array
-
-    Parameters
-    ----------
-    fname_args : list
-        list containing args used to find vtk file name.
-        Contents are [basedir, sample, time]
-
-    Returns
-    -------
-    field_data_t : array_like
-        1D array containing field point values from all blocks
-    """
-    field_data_t = []
-    
-    fname_template = name_template_exodus(*fname_args, exodus_name)
-    fname_list_block = glob(fname_template)
-    if len(fname_list_block) > 1:
-        warn(f"multiple files found {fname_list_block}")
-    elif len(fname_list_block) == 0:
-        raise IndexError(f"{fname_template} not matching")
-    fname = fname_list_block[0]
-    mesh = meshio.read(fname)
-    # Dict may be un-ordered, but timestep ordering not important for now(?)
-    glob_dict = GlobDict(mesh.point_data)
-    field_data = glob_dict.glob(f"{fieldname}*", nozero)
-    if keepmesh:
-        pass
-    else:
-        # delete mesh object, and create empty variable
-        # means we can keep the same loop structure
-        del mesh
-        mesh = None
-    return field_data, mesh
 
 def read_data(
     sample_names, 
@@ -336,19 +280,18 @@ def get_dataset_coefs(
 if __name__ == "__main__":
     args = get_inputs()
 
-    RESULTS_DIR = f"{args.path_to_samples}/"
+    if args.val:
+        with open(f"{args.path_to_samples}/complete_samples_val.txt", "r") as f:
+            file_lines = f.read()
+            sample_names = file_lines.strip().split("\n")
 
-    if args.outdir is None:
-        POD_DIR = f"{RESULTS_DIR}/pod_data/"
+        sample_names = sample_names[:args.num_samples]
     else:
-        POD_DIR = args.outdir
-    makedirs(POD_DIR, exist_ok=True)
+        with open(f"{args.path_to_samples}/complete_samples.txt", "r") as f:
+            file_lines = f.read()
+            sample_names = file_lines.strip().split("\n")
 
-    with open(f"{RESULTS_DIR}/complete_samples.txt", "r") as f:
-        file_lines = f.read()
-        sample_names = file_lines.strip().split("\n")
-    
-    sample_names = sample_names[:args.num_samples]
+        sample_names = sample_names[:args.num_samples]
 
     # read all exodus files.
     # dataset is a np.ndarray of all data
@@ -369,26 +312,32 @@ if __name__ == "__main__":
     )
 
     # compute POD weights
-    (
-        mean_dataset_columnvector,
-        pca_model_components,
-        sam_obj,
-    ) = setup_pod_model(dataset, args.num_modes)
-    # save POD weights
-    np.savez(
-        f"{POD_DIR}/pod_weights_truncated.npz",
-        mean=mean_dataset_columnvector.astype("float32"),
-        pca_components=pca_model_components.astype("float32")[:args.num_modes],
-        pca_std=sam_obj.std.astype("float32")[:args.num_modes],
-        cumsum=sam_obj.pca_object.explained_variance_ratio_.astype("float32")[:args.num_modes]
-    )
-    np.savez(
-        f"{POD_DIR}/pod_weights_full.npz",
-        mean=mean_dataset_columnvector.astype("float32"),
-        pca_components=pca_model_components.astype("float32"),
-        pca_std=sam_obj.std.astype("float32"),
-        cumsum=sam_obj.pca_object.explained_variance_ratio_.astype("float32")
-    )
+    if not args.val:
+        (
+            mean_dataset_columnvector,
+            pca_model_components,
+            sam_obj,
+        ) = setup_pod_model(dataset, args.num_modes)
+        # save POD weights
+        np.savez(
+            f"{args.pod_dir}/pod_weights_truncated.npz",
+            mean=mean_dataset_columnvector.astype("float32"),
+            pca_components=pca_model_components.astype("float32")[:args.num_modes],
+            pca_std=sam_obj.std.astype("float32")[:args.num_modes],
+            cumsum=sam_obj.pca_object.explained_variance_ratio_.astype("float32")[:args.num_modes]
+        )
+        np.savez(
+            f"{args.pod_dir}/pod_weights_full.npz",
+            mean=mean_dataset_columnvector.astype("float32"),
+            pca_components=pca_model_components.astype("float32"),
+            pca_std=sam_obj.std.astype("float32"),
+            cumsum=sam_obj.pca_object.explained_variance_ratio_.astype("float32")
+        )
+    else:
+        recon = Reconstructor(model_type=None, pod_coefs_fname=f"{args.pod_dir}/pod_weights_truncated.npz")
+        mean_dataset_columnvector = recon.mean_dataset_columnvector
+        pca_model_components = recon.pca_model_components
+        sam_obj = recon.sam_obj
     # compute and save POD coefficients
     # dataset_coefs_pertime is list of arrays for each sample. 
     #   Array shape is (n_time, n_coefs)
