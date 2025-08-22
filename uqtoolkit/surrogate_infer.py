@@ -9,8 +9,9 @@ from autoemulate.core.compare import AutoEmulate
 from skops.io import dump, get_untrusted_types, load
 try:
   import xgboost as xgb
-except:
-  warnings.warn("xgboost not available")
+  _has_xgboost = True
+except ImportError:
+  _has_xgboost = False
 
 class Reconstructor:
   def __init__(self, surrogate_fname=None, pod_coefs_fname=None, model_type="gp"):
@@ -68,6 +69,7 @@ class Reconstructor:
     xgb_fname : str
         /path/to/xgb_model.bin
     """
+    assert _has_xgboost, "xgboost module required to use `xgb_regressor`"
     self.xgb_model = xgb.Booster()
     self.xgb_model.load_model(xgb_fname)
 
