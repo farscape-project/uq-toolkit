@@ -246,6 +246,8 @@ if __name__ == "__main__":
     x, y = shuffle(x, y, random_state=63)
     x = np.array(x)
     y = np.array(y)[:,args.pod_coef:args.pod_coef+1]
+    assert y.size > 0, "target array is empty"
+    # print(y.size)
     split_size = int(np.ceil(TRAIN_FRACTION * x.shape[0]))
     x_train = x[:split_size]
     y_train = y[:split_size]
