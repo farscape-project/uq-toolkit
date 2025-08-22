@@ -265,7 +265,6 @@ def get_dataset_coefs(
             # compute model parameters that correspond to the current snapshot
             params_i = sam_obj.fit_model_parameters(
                 snapshot_i - mean_dataset_columnvector,
-                pca_model_components,
                 num_modes=num_modes,
             )
             dataset_coefs_pertime[sample].append(params_i)
