@@ -1,4 +1,5 @@
 import argparse
+from warnings import warn
 from glob import glob
 import numpy as np
 import meshio
@@ -279,6 +280,8 @@ def get_dataset_coefs(
 
 if __name__ == "__main__":
     args = get_inputs()
+    if not args.reorder:
+        warn("Reordering not being done on input data to find POD modes. If your mesh ordering is inconsistent, downstream data will be incorrect.")
 
     if args.val:
         with open(f"{args.path_to_samples}/complete_samples_val.txt", "r") as f:
