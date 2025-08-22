@@ -143,9 +143,9 @@ class Reconstructor:
           
 
     if return_std:
-      return recon_field_mean
-    else:
       return recon_field_mean, recon_field_std
+    else:
+      return recon_field_mean
 
   def reconstruct_from_coefs(
     self, pod_coefs, reduction=np.max, num_modes=2
