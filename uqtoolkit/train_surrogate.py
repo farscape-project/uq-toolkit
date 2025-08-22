@@ -1,7 +1,3 @@
-"""
-Train an xgboost model to fit pod coefficients (pod_coefs_sample*.txt),
-based on timestep and parameter (from uq_log*.json).
-"""
 import argparse
 import logging
 from glob import glob
@@ -11,9 +7,10 @@ from os.path import isfile
 import hjson as json
 import matplotlib.pyplot as plt
 import numpy as np
-from sklearn.gaussian_process import GaussianProcessRegressor as GPR
-from sklearn.gaussian_process import kernels
 from sklearn.utils import shuffle
+import torch
+from autoemulate.core.compare import AutoEmulate
+from autoemulate.emulators import GaussianProcess
 from uqtoolkit import SurrogateCLI
 
 logger = logging.getLogger(__name__)
@@ -112,65 +109,33 @@ def find_uqparam_names(log_list, sample):
             key_name_list[i].append(key)
     return key_name_list
 
-def duplicate_kernels(kernel, num_duplicates=1):
-    kernel_out = kernel
-    for i in range(num_duplicates-1):
-        kernel_out = combine_kernels(kernel_out, kernel)
-    return kernel_out        
 
-def combine_kernels(kernel_orig, kernel_to_add, combine_method="add"):
-    if combine_method == "add":
-        out_kernel = kernel_orig + kernel_to_add
-    else:
-        out_kernel = kernel_orig * kernel_to_add
-    return out_kernel
+def find_uqparam_human_names(uq_config, results_dir="."):
+    """
+    Find names of log json files for each app's uncertainties
+    This is given in the uq_log config file
 
+    Parameters
+    ----------
+    uq_config : ordereddict
+        uq-toolkit config file. Has sub-dict entry for each app in hierarchy.
 
-def sklearn_gpr(x_train, y_train, x_test, y_test, hyperparams):
-    # set-up kernels based on information in the json file
-    kernel = None
-    for i, (name, props) in enumerate(hyperparams["kernels"].items()):
-        if name == "RBF":
-            if hyperparams["anisotropic-kernel"] and len(props["length_scale"]) == 1:
-                props["length_scale"] = props["length_scale"]*x_train.shape[1]
-        if i == 0:
-            kernel = getattr(kernels, name)(**props)
-            try:
-                kernel = duplicate_kernels(kernel, hyperparams["num-kernels"][name])
-            except KeyError:
-                pass
-        else:
-            kernel_i = getattr(kernels, name)(**props)
-            try:
-                kernel_i = duplicate_kernels(kernel_i, hyperparams["num-kernels"][name])
-            except KeyError:
-                pass
-            kernel = combine_kernels(kernel, getattr(kernels, name)(**props), hyperparams["kernel-combine"])
+    Returns
+    -------
+    app_log_list : list of ordereddicts
+        each entry has list of uncertain parameter values for the
+        corresponding moose app.
+    """
+    human_names = []
 
+    # hjson uses ordered dicts, so ordering is consistent every time
+    for key_i in uq_config["apps"]:
+        uq_params = uq_config["apps"][key_i]["uncertain-params"]
+        for param_i in uq_params.values():
+            print(param_i)
+            human_names.append(param_i["human_name"])
 
-    # use skops to save/load gpr model in a safe way
-    model_found = False
-    if "model-file" in hyperparams.keys():
-        model_file = hyperparams["model-file"]
-        if isfile(model_file) and args.load_model:
-            model_found = True
-            unknown_types = get_untrusted_types(file=model_file)
-            print("loading gpr")
-            gpr = load(model_file, trusted=unknown_types)
-    # if no model available, or --load-model not provided, then we fit the GPR
-    if not model_found:
-        gpr = GPR(kernel=kernel, **hyperparams["GPR-params"]).fit(x_train, y_train)
-    
-    # log the outputs
-    score_train = gpr.score(x_train, y_train)
-    score_test = gpr.score(x_test, y_test)
-
-    logger.info(f"kernel {gpr.kernel_}")
-    logger.info(
-        f"alpha min: {abs(gpr.alpha_).min()}, mean {abs(gpr.alpha_).mean()}, max: {abs(gpr.alpha_).max()}"
-    )
-    logger.info(f"log_marginal_likelihood {gpr.log_marginal_likelihood_value_}")
-    return gpr, score_train, score_test
+    return human_names
 
 def load_data_timedependent(sample_names, params, app_log_list, app_key_name_list, pod_dir):
     dataset_coefs_pertime = dict.fromkeys(sample_names)
@@ -198,17 +163,17 @@ def load_data_timedependent(sample_names, params, app_log_list, app_key_name_lis
                     else:
                         x_i.append(app_log[sample_i][key])
 
-                    for offset_param_name, offset_value in params[
-                        "input-offset"
-                    ].items():
-                        if offset_param_name in key:
-                            x_i[-1] = x_i[-1] - offset_value
+                    # for offset_param_name, offset_value in params[
+                    #     "input-offset"
+                    # ].items():
+                    #     if offset_param_name in key:
+                    #         x_i[-1] = x_i[-1] - offset_value
 
-                    for norm_param_name, norm_value in params[
-                        "input-normalisations"
-                    ].items():
-                        if norm_param_name in key:
-                            x_i[-1] = x_i[-1] / norm_value
+                    # for norm_param_name, norm_value in params[
+                    #     "input-normalisations"
+                    # ].items():
+                    #     if norm_param_name in key:
+                    #         x_i[-1] = x_i[-1] / norm_value
             x.append(x_i)
             y_i = [dataset_coefs_pertime[sample_i][t_index][1]]
             y.append(y_i)
@@ -232,17 +197,17 @@ def load_data_steady(sample_names, params, app_log_list, app_key_name_list, pod_
                 else:
                     x_i.append(app_log[sample_i][key])
 
-                for offset_param_name, offset_value in params[
-                    "input-offset"
-                ].items():
-                    if offset_param_name in key:
-                        x_i[-1] = x_i[-1] - offset_value
+                # for offset_param_name, offset_value in params[
+                #     "input-offset"
+                # ].items():
+                #     if offset_param_name in key:
+                #         x_i[-1] = x_i[-1] - offset_value
 
-                for norm_param_name, norm_value in params[
-                    "input-normalisations"
-                ].items():
-                    if norm_param_name in key:
-                        x_i[-1] = x_i[-1] / norm_value
+                # for norm_param_name, norm_value in params[
+                #     "input-normalisations"
+                # ].items():
+                #     if norm_param_name in key:
+                #         x_i[-1] = x_i[-1] / norm_value
         x.append(x_i)
         y_i = dataset_coefs_pertime[sample_i]
         y.append(y_i)
@@ -278,7 +243,7 @@ if __name__ == "__main__":
 
     # randomly shuffle and then split data into train/test
     TRAIN_FRACTION = 0.8
-    x, y = shuffle(x, y)
+    x, y = shuffle(x, y, random_state=63)
     x = np.array(x)
     y = np.array(y)[:,args.pod_coef:args.pod_coef+1]
     split_size = int(np.ceil(TRAIN_FRACTION * x.shape[0]))
@@ -293,43 +258,57 @@ if __name__ == "__main__":
         func_to_check = getattr(np, feature)
         logger.info(f"input feature {feature} values {func_to_check(x_train, axis=0)}")
 
-    gpr, score_train, score_test = sklearn_gpr(x_train, y_train, x_test, y_test, params)
-    if "model-file" in params.keys() and args.save_model:
-        dump(gpr, f'{POD_DIR}/my_gpr_podcoef{args.pod_coef}.skops')
+    if args.load_model:
+        best = AutoEmulate.load_model(f"{args.pod_dir}/ae_best_{args.pod_coef}")
+    else:
+        ae = AutoEmulate(x_train, y_train, log_level="progress_bar", models=[GaussianProcess])
+        print(ae.summarise())
+        best_result = ae.best_result()
+        best = best_result.model
+        print("Model with id: ", best_result.id, " performed best: ", best_result.model_name)
+    if args.save_model:
+        best_result_filepath = ae.save(best, f"{args.pod_dir}/ae_best_{args.pod_coef}", use_timestamp=True)
+    y_pred_ae = best.predict(torch.tensor(x_test).to(torch.float32)).mean.numpy().squeeze()
+    print(y_pred_ae)
+    print("autoemulate error")
+    print(np.c_[y_test.squeeze(), y_pred_ae, abs(y_test.squeeze() - y_pred_ae)])
 
-    final_result = f"scores: train {score_train:5f}, test {score_test:5f}"
-    print(final_result)
-    logger.info(final_result)
-
-    y_pred_train_all = []
-    y_pred_train_all_std = []
+    y_pred_train_all_ae = []
+    y_pred_train_all_std_ae = []
     for x_train_i, y_train_i in zip(x_train, y_train):
-        y_pred, y_std = gpr.predict(x_train_i.reshape(1, -1), return_std=True)
-        y_pred_train_all.append(y_pred.reshape(-1, num_out_features))
-        y_pred_train_all_std.append(y_std.reshape(-1, num_out_features))
+        y_pred_ae = best.predict(torch.tensor(x_train_i[None]).to(torch.float32))
+        y_pred_train_all_ae.append(y_pred_ae.mean.numpy())
+        y_pred_train_all_std_ae.append(y_pred_ae.variance.numpy()**0.5)
 
-    y_pred_test_all = []
-    y_pred_test_all_std = []
+    y_pred_test_all_ae = []
+    y_pred_test_all_std_ae = []
     for x_test_i, y_test_i in zip(x_test, y_test):
-        y_pred, y_std = gpr.predict(x_test_i.reshape(1, -1), return_std=True)
-        y_pred_test_all.append(y_pred.reshape(-1, num_out_features))
-        y_pred_test_all_std.append(y_std.reshape(-1, num_out_features))
+        y_pred_ae = best.predict(torch.tensor(x_test_i[None]).to(torch.float32))
+        y_pred_test_all_ae.append(y_pred_ae.mean.numpy())
+        y_pred_test_all_std_ae.append(y_pred_ae.variance.numpy()**0.5)
 
     # shape is [N_sample, 1, N_features], so we slice axis=1 
-    y_pred_train_all = np.array(y_pred_train_all)[:,0]
-    y_pred_test_all = np.array(y_pred_test_all)[:,0]
-    y_pred_train_all_std = np.array(y_pred_train_all_std)[:,0]
-    y_pred_test_all_std = np.array(y_pred_test_all_std)[:,0]
+    y_pred_train_all_ae = np.array(y_pred_train_all_ae)[:,0]
+    y_pred_train_all_std_ae = np.array(y_pred_train_all_std_ae)[:,0]
+    y_pred_test_all_ae = np.array(y_pred_test_all_ae)[:,0]
+    y_pred_test_all_std_ae = np.array(y_pred_test_all_std_ae)[:,0]
 
     errbar_kwargs = dict(ls="none", alpha=0.2)
 
     plt.close("all")
     i = 0
     fig, ax = plt.subplots(ncols=2, sharey=True)
-    ax[0].set_title(fr"Train ($R^2={score_train:4f}$)")
-    ax[0].scatter(y_train[:,i], y_pred_train_all[:,i], c="blue", s=10)
-    ax[0].errorbar(y_train[:,i], y_pred_train_all[:,i], yerr=y_pred_train_all_std[:,i]*2, **errbar_kwargs)
+    # autoemulate
+    ax[0].scatter(y_train[:,i], y_pred_train_all_ae[:,i], c="red", s=10)
+    ax[0].errorbar(y_train[:,i], y_pred_train_all_ae[:,i], yerr=y_pred_train_all_std_ae[:,i]*2, c="red", **errbar_kwargs)
+    # identity
     ax[0].scatter(y_train[:,i], y_train[:,i], c="black", s=1)
+    # autoemulate
+    ax[1].scatter(y_test[:,i], y_pred_test_all_ae[:,i], c="red", s=10)
+    ax[1].errorbar(y_test[:,i], y_pred_test_all_ae[:,i], yerr=y_pred_test_all_std_ae[:,i]*2, c="red", **errbar_kwargs)
+    # identity
+    ax[1].scatter(y_test[:,i], y_test[:,i], c="black", s=1)
+    # formatting
     ax[0].set_ylabel("predicted")
     ax[0].set_xlabel("true")
     ax[1].set_xlabel("true")
