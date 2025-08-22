@@ -414,4 +414,4 @@ if __name__ == "__main__":
             ]
             header = "t " + header
 
-        np.savetxt(f"{POD_DIR}/pod_coefs_{sample_i}.txt", data_to_write, header=header)
+        np.savetxt(f"{args.pod_dir}/pod_coefs_{sample_i}.txt", data_to_write, header=header)

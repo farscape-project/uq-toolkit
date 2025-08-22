@@ -14,37 +14,18 @@ import numpy as np
 from sklearn.gaussian_process import GaussianProcessRegressor as GPR
 from sklearn.gaussian_process import kernels
 from sklearn.utils import shuffle
-from skops.io import dump, get_untrusted_types, load
+from uqtoolkit import SurrogateCLI
 
 logger = logging.getLogger(__name__)
 
 
 def get_inputs():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--path-to-samples",
-        default=".",
-        type=str,
-        help="/path/to/samples basedir",
-    )
-    parser.add_argument(
-        "--uq-config",
-        "-c",
-        default="config.jsonc",
-        type=str,
-        help="name of config file used for uq jobs",
-    )
+    parser = SurrogateCLI()
     parser.add_argument(
         "--surrogate-params",
         default="gpr_params.jsonc",
         type=str,
         help="name of config file used for surrogate model training",
-    )
-    parser.add_argument(
-        "--pod-dir",
-        default=None,
-        type=str,
-        help="/path/to/dir containing pod_coefs_sample*.txt",
     )
     parser.add_argument(
         "--num-epoch",
@@ -270,24 +251,11 @@ def load_data_steady(sample_names, params, app_log_list, app_key_name_list, pod_
 if __name__ == "__main__":
     args = get_inputs()
     logging.basicConfig(filename="train_surrogate.log", level=logging.INFO)
-    
-    # by default, POD data will be in the results dir. 
-    # But in the nextflow pipeline, we will write to a temporary cache directory.
-    if args.pod_dir is None:
-        POD_DIR = f"{args.path_to_samples}/pod_data"
-    else:
-        POD_DIR = args.pod_dir
-    
-    # make plotting directory
-    makedirs(f"{args.path_to_samples}/plots", exist_ok=True)
 
     # read all existing sample names
     with open(f"{args.path_to_samples}/complete_samples.txt", "r") as f:
         file_lines = f.read()
         sample_names = file_lines.strip().split("\n")
-
-    with open(args.uq_config) as f:
-        uq_config = json.load(f)
 
     # read model hyperparams from file, or set to default
     if isfile(args.surrogate_params):
@@ -297,7 +265,7 @@ if __name__ == "__main__":
         raise AssertionError(f"not found {args.surrogate_params}")
     logger.info(f"surrogate hyperparams {params}")
 
-    app_log_list = find_uqlog_names(uq_config, results_dir=args.path_to_samples)
+    app_log_list = find_uqlog_names(args.uq_config, results_dir=args.path_to_samples)
     app_key_name_list = find_uqparam_names(app_log_list, "sample0")
 
     dataset_coefs_pertime = dict.fromkeys(sample_names)
@@ -306,7 +274,7 @@ if __name__ == "__main__":
     else:
         data_func = load_data_timedependent
         
-    x, y = data_func(sample_names, params, app_log_list, app_key_name_list, POD_DIR)
+    x, y = data_func(sample_names, params, app_log_list, app_key_name_list, args.pod_dir)
 
     # randomly shuffle and then split data into train/test
     TRAIN_FRACTION = 0.8
@@ -365,9 +333,5 @@ if __name__ == "__main__":
     ax[0].set_ylabel("predicted")
     ax[0].set_xlabel("true")
     ax[1].set_xlabel("true")
-    ax[1].set_title(fr"Test ($R^2={score_test:4f}$)")
-    ax[1].scatter(y_test[:,i], y_pred_test_all[:,i], c="blue", s=10)
-    ax[1].errorbar(y_test[:,i], y_pred_test_all[:,i], yerr=y_pred_test_all_std[:,i]*2, c="blue", **errbar_kwargs)
-    ax[1].scatter(y_test[:,i], y_test[:,i], c="black", s=1)
-    plt.savefig(f"{args.path_to_samples}/plots/gpr-calibration-{args.pod_coef}.png", dpi=300)
+    plt.savefig(f"{args.plot_dir}/gpr-calibration-{args.pod_coef}.png", dpi=300)
 
