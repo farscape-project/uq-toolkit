@@ -1,4 +1,5 @@
 import argparse
+import logging
 from warnings import warn
 from glob import glob
 import numpy as np
@@ -11,6 +12,8 @@ from os import makedirs
 from time import time
 from tqdm import tqdm
 from uqtoolkit import ExodusReader, Reconstructor, SurrogateCLI
+
+logger = logging.getLogger(__name__)
 
 def get_inputs():
     parser = SurrogateCLI(description=__doc__)
@@ -158,7 +161,7 @@ def read_data(
         dataset = np.concatenate(dataset, axis=0)
     else:
         dataset = np.array(dataset).reshape(-1, ex_reader.num_mesh_points)
-    print("dataset shape is:", dataset.shape)
+    logger.info(f"dataset shape is: {dataset.shape}")
 
     if reorder:
         ordering_per_sample = np.array(ordering_per_sample)
@@ -254,7 +257,7 @@ def get_dataset_coefs(
     dataset_mean_pertime = dict.fromkeys(sample_names)
     dataset_scale_pertime = dict.fromkeys(sample_names)
     for sample in sample_names:
-        print("computing coeffs", sample)
+        logger.info(f"computing coeffs {sample}")
         dataset_mean_pertime[sample] = []
         dataset_scale_pertime[sample] = []
         dataset_coefs_pertime[sample] = []
@@ -279,6 +282,7 @@ def get_dataset_coefs(
 
 if __name__ == "__main__":
     args = get_inputs()
+    logging.basicConfig(filename="find_pod_modes.log", level=logging.INFO)
     if not args.reorder:
         warn("Reordering not being done on input data to find POD modes. If your mesh ordering is inconsistent, downstream data will be incorrect.")
 
