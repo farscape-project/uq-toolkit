@@ -81,16 +81,11 @@ class Reconstructor:
     pyssam_fname : str
         /path/to/pod_data.npz
     """
-    # TODO: Implement such that object can be used with no dataset
-    # i.e. train offline and use obj at inference time
-    # make pyssam.morph_model a staticmethod
-    self.sam_obj = pyssam.SAM(
-      np.random.normal(size=(3, 3))
-    )  # create dummy sam_obj
-    npzfile = np.load(pyssam_fname)
-    self.mean_dataset_columnvector = npzfile["mean"]
-    self.pca_model_components = npzfile["pca_components"]
-    self.sam_obj.std = npzfile["pca_std"]
+    (
+      self.mean_dataset_columnvector, 
+      self.pca_model_components, 
+      self.pca_model_std
+     ) = pyssam.SAM.load_model(pyssam_fname) 
 
   def reconstruct_with_gpr(
     self, param_list, reduction=np.max, num_modes=2, return_std=False
@@ -116,26 +111,28 @@ class Reconstructor:
         Reconstructed field values (or, optionally reduced to scalar)
     """
     feat_mat = np.array([param_list])
-    pod_coefs_mean, pod_coefs_std  = self.surrogate_model(feat_mat, return_std=False)
+    pod_coefs_mean, pod_coefs_std  = self.surrogate_model(feat_mat, return_std=True)
 
     # fix for when num_modes > pod_coefs
-    num_modes = min(len(pod_coefs), num_modes)
+    num_modes = min(len(pod_coefs_mean), num_modes)
     # silence warnings from pyssam
     with warnings.catch_warnings():
       warnings.simplefilter("ignore")
-      recon_field_mean = self.sam_obj.morph_model(
-        self.mean_dataset_columnvector,
-        self.pca_model_components,
-        pod_coefs_mean[:num_modes].squeeze(),
+      recon_field_mean = pyssam.morph_model(
+        model_parameters=pod_coefs_mean[:num_modes].squeeze(),
+        mean_dataset_columnvector=self.mean_dataset_columnvector,
+        pca_model_components=self.pca_model_components,
+        pca_model_std=self.pca_model_std,
         num_modes=num_modes,
       )
       if reduction is not None:
         recon_field_mean = reduction(recon_field_mean)
       if return_std:
-        recon_field_std = self.sam_obj.morph_model(
-          self.mean_dataset_columnvector,
-          self.pca_model_components,
-          pod_coefs_std[:num_modes].squeeze(),
+        recon_field_std = pyssam.morph_model(
+          model_parameters=pod_coefs_std[:num_modes].squeeze(),
+          mean_dataset_columnvector=self.mean_dataset_columnvector*0,
+          pca_model_components=self.pca_model_components,
+          pca_model_std=self.pca_model_std,
           num_modes=num_modes,
         )
         if reduction is not None:
@@ -174,10 +171,11 @@ class Reconstructor:
     num_modes = min(len(pod_coefs), num_modes)
     with warnings.catch_warnings():
       warnings.simplefilter("ignore")
-      recon_field = self.sam_obj.morph_model(
-        self.mean_dataset_columnvector,
-        self.pca_model_components,
-        pod_coefs[:num_modes],
+      recon_field = pyssam.morph_model(
+        mean_dataset_columnvector=self.mean_dataset_columnvector,
+        pca_model_components=self.pca_model_components,
+        model_parameters=pod_coefs[:num_modes].squeeze(),
+        pca_model_std=self.pca_model_std,
         num_modes=num_modes,
       )
 
