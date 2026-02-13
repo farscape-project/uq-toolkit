@@ -4,8 +4,17 @@ Classes for reading various data types e.g. exodus, vtk
 from fnmatch import fnmatch
 import meshio
 import numpy as np
-from tqdm import tqdm
 from warnings import warn
+
+# Source - https://stackoverflow.com/a/56944220
+# Posted by Shadow
+# Retrieved 2026-02-13, License - CC BY-SA 4.0
+
+try:
+    from tqdm import tqdm
+except ImportError:
+    def tqdm(iterator, *args, **kwargs):
+        return iterator
 
 class GlobDict(dict):
     """
