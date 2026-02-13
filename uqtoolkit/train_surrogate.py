@@ -271,7 +271,7 @@ if __name__ == "__main__":
     if args.save_model:
         best_result_filepath = ae.save(best, f"{args.pod_dir}/ae_best_{args.pod_coef}", use_timestamp=True)
     y_pred_ae = best.predict(torch.tensor(x_test).to(torch.float32)).mean.numpy().squeeze()
-    print(y_pred_ae)
+    print("predicted:", y_pred_ae)
     print("autoemulate error")
     print(np.c_[y_test.squeeze(), y_pred_ae, abs(y_test.squeeze() - y_pred_ae)])
 
