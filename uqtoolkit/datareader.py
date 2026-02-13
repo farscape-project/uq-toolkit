@@ -78,10 +78,10 @@ class ExodusReader:
                 block_ind = b
 
         # self.cells = [(mesh.cells[block_ind].type, mesh.cells[block_ind].data - mesh.cells[block_ind].data.min())]
-        points_to_show = np.unique(mesh.cells[block_ind].data)
-        self.points = mesh.points[points_to_show]
+        self.points_in_block = np.unique(mesh.cells[block_ind].data)
+        self.points = mesh.points[self.points_in_block]
         for key_i, data_i in field_data_all_t.items():
-            field_data_all_t[key_i] = data_i[points_to_show]
+            field_data_all_t[key_i] = data_i[self.points_in_block]
         assert len(field_data_all_t) > 0
         return field_data_all_t
 
@@ -164,8 +164,9 @@ class ExodusReader:
             # assumes tag is list containing only block name
             if block.tags[0] == self.block_name:
                 block_ind = b
-        points_to_show = np.unique(mesh.cells[block_ind].data)
-        field_to_write[points_to_show] = field
+
+        # assumes self.points_to_show set in _read_pointdata
+        field_to_write[self.points_in_block] = field
         mesh.point_data[name] = field_to_write
         return mesh
 
