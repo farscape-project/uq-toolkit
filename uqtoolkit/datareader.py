@@ -38,6 +38,24 @@ class GlobDict(dict):
 
 class ExodusReader:
     def __init__(self, fieldname, nozero=True, to_array=True, to_dict=False, block_name="target"):
+        """
+        Helper class for reading datasets of Exodus files output from MOOSE, using meshio.
+
+        Parameters
+        ----------
+        fieldname : str
+            Name of field in Exodus file to read e.g. "T". Usually corresponds a [Variable] or [AuxVariable]
+            in the MOOSE input files.
+        nozero : bool
+            Skip the first timestep, which is usually a uniform initial condition.
+        to_array : bool
+            In the `ExodusReader.read_all_samples` API, output all fields as a stacked array.
+        to_dict : bool
+            In the `ExodusReader.read_all_samples` API, output all fields as a dictionary where the key names 
+            are e.g. "sample0", "sample1",...
+        block_name: str
+            Name of block in Exodus file to search for, and return pointdata for that specific block.
+        """
         self.fieldname = fieldname
         self.nozero = nozero
         self.block_name = block_name
@@ -52,9 +70,11 @@ class ExodusReader:
         self.out_array = None
         self.out_dict = dict()
     
-    def sort_steps(self, timestep_dict):
+    def _sort_steps(self, timestep_dict):
         """
-        Assumes dict keys are of the form "fieldname_time{TIME_ID}"
+        Our meshio branch will convert time-varying exodus data into a dictionary of separate fields
+        named as e.g. "{fieldname}_time{TIME_ID}"
+        Here we order the keys in that dictionary and save them into a list which can be looped over.
         """
         time_keys = [step_name for step_name in timestep_dict.keys()]
         time_keys.sort(key=lambda x: int(x.split("_time")[1]))
@@ -62,6 +82,21 @@ class ExodusReader:
         return out_data
 
     def _read_cell_data(self, mesh):
+        """
+        Access cell_data attribute from the meshio mesh and filters the time-varying output
+        data to the specific block of interest.
+        Also writes the cell-centroids to `self.points` (taken as the mean of all cell vertices).
+
+        Parameters
+        ----------
+        mesh : meshio.Mesh
+            Time-varying exodus field data.
+        
+        Returns
+        -------
+        field_data_all_t : dict
+            field data for each timestep, sorted into a dictionary.
+        """
         glob_dict = GlobDict(mesh.cell_data)
         # Dict may be un-ordered
         field_data_all_t = glob_dict.glob_to_dict(f"{self.fieldname}_time*", self.nozero)
@@ -77,6 +112,22 @@ class ExodusReader:
         return field_data_all_t
 
     def _read_point_data(self, mesh):
+        """
+        Access point_data attribute from the meshio mesh and filters the time-varying output
+        data to the specific block of interest.
+        Also writes the points to `self.points`, and `self.points_in_block` which filters the 
+        read data to the selected block, but is also used elsewhere for writing data to only a specific block.
+
+        Parameters
+        ----------
+        mesh : meshio.Mesh
+            Time-varying exodus field data.
+        
+        Returns
+        -------
+        field_data_all_t : dict
+            field data for each timestep, sorted into a dictionary.
+        """
         glob_dict = GlobDict(mesh.point_data)
         # Dict may be un-ordered
         field_data_all_t = glob_dict.glob_to_dict(f"{self.fieldname}_time*", self.nozero)
@@ -95,6 +146,29 @@ class ExodusReader:
         return field_data_all_t
 
     def read_fname(self, fname, return_mesh=False, all_steps=False, reorder_fname=None):
+        """
+        Read an exodus file containing field data.
+
+        Parameters
+        ----------
+        fname : str
+            Path to the exodus file (may contain a wildcard)
+        return_mesh : bool
+            Also return the meshio.Mesh object to the user (useful for getting connectivity etc for viz).
+        all_steps : bool
+            Return all timesteps in the output file (or only the final step).
+        reorder_fname : str | None
+            Path to a file name which contains point ordering which can be used to map the points in `fname`
+            to match a reference point order (i.e. for a baseline mesh). Needed for dealing with pipelines
+            that include remeshing.
+        
+        Returns
+        -------
+        field_data : list
+            List of numpy arrays for point or cell data for time-varying field, sorted in order of time.
+        mesh : meshio.Mesh
+            Optional access to the actual meshio object used to extract fields.
+        """
         # check for wildcard
         if "*" in fname:
             fname_glob = glob(fname)
@@ -102,8 +176,7 @@ class ExodusReader:
                 warn(f"multiple files found {fname_glob}")
             elif len(fname_glob) == 0:
                 raise IndexError(f"{fname_template} not matching")
-            else:
-                fname = fname_glob[0]
+            fname = fname_glob[0]
         mesh = meshio.read(fname)
         # try except for point-data or cell-data
         try:
@@ -111,7 +184,7 @@ class ExodusReader:
         except:
             field_data_all_t = self._read_point_data(mesh)
         # now we sort the list order
-        field_data = self.sort_steps(field_data_all_t)
+        field_data = self._sort_steps(field_data_all_t)
         self.num_mesh_points = len(field_data[-1])
 
         if all_steps:
@@ -230,6 +303,23 @@ class ExodusReader:
 
 
 def write_timeseries(mesh, times, field_val_list, field_name_list, fname):
+    """
+    Writing to Exodus data is difficult, so instead we can write timeseries point data
+    to an xdmf file as recommended in meshio's README.
+
+    Parameters
+    ----------
+    mesh : meshio.Mesh
+        Object containing connectivity, cells, points etc.
+    times : iterable
+        List or numpy array containing time values to loop over.
+    field_val_list : iterable
+        List of field values as arrays.
+    field_name_list : iterable
+        Strings for each field written e.g. ["T", "B"]
+    fname: str
+        Output name for xdmf file
+    """
     with meshio.xdmf.TimeSeriesWriter(fname) as writer:
         writer.write_points_cells(mesh.points, mesh.cells)
         # for t, vals_i_t in enumerate(field_val_i):
