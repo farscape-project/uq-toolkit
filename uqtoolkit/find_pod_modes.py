@@ -219,9 +219,7 @@ def setup_pod_model(dataset, num_modes):
 def get_dataset_coefs(
     sample_names,
     field_snapshot_dict,
-    sam_obj,
-    mean_dataset_columnvector,
-    pca_model_components,
+    recon_class,
     num_modes,
 ):
     """
@@ -237,8 +235,7 @@ def get_dataset_coefs(
     field_snapshot_dict : dict
         contains a dict entry for each sample. Each dict entry is a np.ndarray
         with time vs pointdata values
-    sam_obj : pyssam.SAM object
-        contains additional object information on the dataset
+    recon_class : TODO:
     mean_dataset_columnvector : array_like
         mean shape of the training data in a 1D array.
     pca_model_components : array_like
@@ -266,10 +263,8 @@ def get_dataset_coefs(
             dataset_scale_pertime[sample].append(snapshot_i.std())
 
             # compute model parameters that correspond to the current snapshot
-            params_i = sam_obj.fit_model_parameters(
-                snapshot_i - mean_dataset_columnvector,
-                num_modes=num_modes,
-            )
+            params_i = recon_class.find_snapshot_pod_coefs(snapshot_i, num_modes)
+            print(f"POD PARAMS {sample} : {params_i}")
             dataset_coefs_pertime[sample].append(params_i)
         # convert list to numpy array (faster to append to list than np array)
         dataset_coefs_pertime[sample] = np.array(
@@ -339,20 +334,16 @@ if __name__ == "__main__":
             pca_std=sam_obj.std.astype("float32"),
             cumsum=sam_obj.pca_object.explained_variance_ratio_.astype("float32")
         )
-    else:
-        recon = Reconstructor(model_type=None, pod_coefs_fname=f"{args.pod_dir}/pod_weights_truncated.npz")
-        mean_dataset_columnvector = recon.mean_dataset_columnvector
-        pca_model_components = recon.pca_model_components
-        sam_obj = recon.sam_obj
+    recon = Reconstructor(model_type=None, pod_coefs_fname=f"{args.pod_dir}/pod_weights_truncated.npz")
+    if not args.val:
+        print("mean", np.c_[mean_dataset_columnvector, recon.mean_dataset_columnvector])
     # compute and save POD coefficients
     # dataset_coefs_pertime is list of arrays for each sample. 
     #   Array shape is (n_time, n_coefs)
     dataset_coefs_pertime = get_dataset_coefs(
         sample_names,
         field_snapshot_dict,
-        sam_obj,
-        mean_dataset_columnvector,
-        pca_model_components,
+        recon,
         args.num_modes,
     )
     # write dataset_coefs_pertime. These are used later as target for regression model

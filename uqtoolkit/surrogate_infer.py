@@ -89,6 +89,16 @@ class Reconstructor:
       self.pca_model_std
      ) = pyssam.SAM.load_model(pyssam_fname) 
 
+  def find_snapshot_pod_coefs(self, snapshot, num_modes=int(1e6)):
+    # pyssam automatically adds the dataset mean, which we want to avoid, so we first subtract it here
+    return pyssam.fit_model_parameters(
+      snapshot,# - self.mean_dataset_columnvector, 
+      self.pca_model_components,
+      self.pca_model_std,
+      self.mean_dataset_columnvector,
+      num_modes=num_modes
+    )
+
   def reconstruct_with_gpr(
     self, param_list, reduction=np.max, num_modes=2, return_std=False
   ):
